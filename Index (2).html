@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Almoxarifado - Divisão de Alumínio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+  window.__createSupabaseClient = createClient;
+  window.dispatchEvent(new Event('supabaseLibReady'));
+</script>
+<style>
+  :root {
+    --steel-light: #6f6f74;
+    --rust: #c8102e;
+    --amber: #e67e22;
+    --green: #27ae60;
+    --bg: #f5f4f2;
+    --surface: #ffffff;
+    --card: #ffffff;
+    --card2: #f4f4f5;
+    --border: #dcdce0;
+    --text: #1c1c1e;
+    --text-dim: #5a5a5f;
+    --text-muted: #8b8b90;
+    --accent: #c8102e;
+    --font-body: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-body); background: var(--bg); color: var(--text); }
+  header { background: #141414; padding: 14px 24px; display: flex; align-items: center; gap: 14px; }
+  .logo svg { display: block; }
+  .header-title { color: #f5f4f2; font-size: 18px; font-weight: bold; }
+  .header-sub { color: #9a9a9e; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+  nav { background: #141414; display: flex; gap: 6px; padding: 0 24px 12px; flex-wrap: wrap; }
+  nav button { background: none; border: none; color: #b5b5b8; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: var(--font-body); }
+  nav button:hover { background: rgba(255,255,255,.08); color: #fff; }
+  nav button.active { background: var(--accent); color: #fff; }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .page-title { font-family: Georgia, serif; font-size: 24px; margin-bottom: 4px; }
+  .page-subtitle { font-size: 13px; color: var(--text-dim); margin-bottom: 20px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 14px; margin-bottom: 24px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; border-left: 4px solid var(--kpi-color, var(--accent)); }
+  .kpi-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+  .kpi-value { font-family: Georgia, serif; font-size: 24px; font-weight: bold; margin: 4px 0; }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); }
+  .section-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin: 24px 0 12px; }
+  .section-title { font-weight: bold; font-size: 15px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  input, select, textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: var(--font-body); background: var(--surface); color: var(--text); }
+  .btn { background: var(--steel-light); color: #fff; border: none; padding: 9px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn:hover { background: var(--accent); }
+  .btn.danger { background: var(--rust); }
+  .btn.small { padding: 5px 10px; font-size: 12px; }
+  .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--card2); color: var(--text-dim); text-align: left; padding: 10px 12px; font-size: 11px; text-transform: uppercase; }
+  td { padding: 10px 12px; border-top: 1px solid var(--border); }
+  tr:hover td { background: rgba(0,0,0,.02); }
+  .empty { text-align: center; color: var(--text-muted); padding: 20px; }
+  .badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+  .badge-ok { background: rgba(39,174,96,.14); color: #1e8449; }
+  .badge-warning { background: rgba(230,126,34,.15); color: #b35900; }
+  .badge-danger { background: rgba(200,16,46,.12); color: #a80e26; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 999; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 10px; width: 90%; max-width: 480px; max-height: 85vh; overflow: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+  .modal-title { font-weight: bold; }
+  .modal-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-dim); }
+  .modal-body { padding: 20px; }
+  .modal-footer { padding: 16px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group.full { grid-column: 1/-1; }
+  .form-group label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--green); color: #fff; padding: 12px 18px; border-radius: 8px; font-size: 13px; opacity: 0; transform: translateY(10px); transition: .2s; pointer-events: none; z-index: 2000; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  #loginOverlay { position: fixed; inset: 0; background: #141414; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+  .login-box { background: #fff; border-radius: 10px; padding: 34px; width: 340px; }
+  .login-title { font-family: Georgia, serif; font-size: 22px; font-weight: bold; }
+  .login-sub { font-size: 11px; color: #8b8b90; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 22px; }
+  .login-box input { width: 100%; margin-bottom: 10px; padding: 10px; }
+  .login-box button { width: 100%; padding: 11px; margin-top: 6px; }
+  #loginErro { color: var(--rust); font-size: 12px; margin-top: 10px; min-height: 16px; }
+  #saveStatus { font-size: 11px; color: #8b8b90; margin-left: auto; }
+</style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <svg width="44" height="44" viewBox="0 0 100 100" style="display:block;margin:0 auto 14px"><circle cx="50" cy="50" r="36" fill="none" stroke="#c8102e" stroke-width="18"/></svg>
+    <div class="login-title" style="text-align:center">Almoxarifado</div>
+    <div class="login-sub" style="text-align:center">Construtora Calper — Divisão de Alumínio</div>
+    <input id="loginEmail" type="email" placeholder="E-mail">
+    <input id="loginSenha" type="password" placeholder="Senha">
+    <button class="btn" onclick="fazerLogin()">Entrar</button>
+    <div id="loginErro"></div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="appRoot" style="display:none">
+  <header>
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="none" stroke="#c8102e" stroke-width="18"/></svg></div>
+    <div>
+      <div class="header-title">Almoxarifado de Alumínio</div>
+      <div class="header-sub">Construtora Calper</div>
+    </div>
+    <span id="saveStatus"></span>
+    <button class="btn small" style="background:var(--card2);color:#fff" onclick="fazerLogout()">Sair</button>
+  </header>
+
+  <nav>
+    <button onclick="showTab('dashboard')" class="active" id="navBtn-dashboard">📊 Dashboard</button>
+    <button onclick="showTab('estoque')" id="navBtn-estoque">📦 Estoque</button>
+    <button onclick="showTab('perfis')" id="navBtn-perfis">📏 Perfis</button>
+    <button onclick="showTab('entradas')" id="navBtn-entradas">📥 Entradas</button>
+    <button onclick="showTab('saidas')" id="navBtn-saidas">📤 Saídas</button>
+    <button onclick="showTab('ferramentas')" id="navBtn-ferramentas">🔧 Ferramentas</button>
+    <button onclick="showTab('epi')" id="navBtn-epi">🦺 EPI</button>
+    <button onclick="showTab('funcionarios')" id="navBtn-funcionarios">👤 Funcionários</button>
+    <button onclick="showTab('obras')" id="navBtn-obras">🏗️ Obras</button>
+    <button onclick="showTab('fornecedores')" id="navBtn-fornecedores">🏭 Fornecedores</button>
+    <button onclick="showTab('refeicoes')" id="navBtn-refeicoes">🍽️ Refeições</button>
+    <button onclick="showTab('transferencia')" id="navBtn-transferencia">📋 Transferência</button>
+    <button onclick="showTab('relatorios')" id="navBtn-relatorios">📈 Relatórios</button>
+  </nav>
+
+  <main>
+    <!-- ===== DASHBOARD ===== -->
+    <div id="tab-dashboard" class="tab-panel active">
+      <div class="page-title">Visão Geral</div>
+      <div class="page-subtitle">Panorama do almoxarifado da Divisão de Alumínio.</div>
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </div>
+
+    <!-- ===== ESTOQUE ===== -->
+    <div id="tab-estoque" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Estoque de Materiais</div>
+        <div class="controls">
+          <input type="text" id="estoqueSearch" placeholder="Buscar item..." oninput="renderEstoque()">
+          <button class="btn" onclick="novoItem()">+ Novo Item</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Código</th><th>Descrição</th><th>Categoria</th><th>Un.</th>
+            <th>Mín.</th><th>Estoque</th><th>Status</th><th>Valor (R$)</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="estoqueTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== PERFIS ===== -->
+    <div id="tab-perfis" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Estoque de Perfis de Alumínio</div>
+        <div class="controls">
+          <input type="text" id="perfilSearch" placeholder="Buscar perfil..." oninput="renderPerfis()">
+          <button class="btn" onclick="novoPerfil()">+ Novo Perfil</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Código</th><th>Descrição</th><th>Linha</th><th>Cor</th><th>Medida (mm)</th>
+            <th>Barras</th><th>Custo/m (R$)</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="perfisTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== ENTRADAS ===== -->
+    <div id="tab-entradas" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Entradas de Material</div>
+        <div class="controls">
+          <button class="btn" onclick="openModal('entradaModal')">+ Registrar Entrada</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Item</th><th>Descrição</th><th>Qtd</th><th>Custo</th><th>NF</th><th>Fornecedor</th><th>Obra</th>
+          </tr></thead>
+          <tbody id="entradasTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== SAÍDAS ===== -->
+    <div id="tab-saidas" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Saídas de Material</div>
+        <div class="controls">
+          <button class="btn" onclick="openModal('saidaModal')">+ Registrar Saída</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Item</th><th>Descrição</th><th>Qtd</th><th>Obra</th><th>OS</th><th>Responsável</th>
+          </tr></thead>
+          <tbody id="saidasTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== FERRAMENTAS ===== -->
+    <div id="tab-ferramentas" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Empréstimo de Ferramentas</div>
+        <div class="controls">
+          <input type="text" id="ferrSearch" placeholder="Buscar ferramenta..." oninput="renderFerramentas()">
+          <button class="btn" style="background:var(--card2);color:var(--text)" onclick="abrirGerenciarMaletas()">🧰 Maletas</button>
+          <button class="btn" onclick="novoEmprestimo()">+ Novo Empréstimo</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Descrição</th><th>Patrimônio</th><th>Funcionário</th><th>Retirada</th><th>Previsão</th><th>Devolução</th><th>Status</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="ferramentasTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== EPI ===== -->
+    <div id="tab-epi" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Controle de EPI</div>
+        <div class="controls">
+          <input type="text" id="epiSearch" placeholder="Buscar funcionário ou EPI..." oninput="renderEpis()">
+          <button class="btn" onclick="abrirEntregaEpi()">+ Entrega de EPI</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Funcionário</th><th>Função</th><th>EPI</th><th>CA</th><th>Qtd</th><th>Entrega</th><th>Vencimento</th><th>Status</th><th>Ação</th>
+          </tr></thead>
+          <tbody id="episTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== FUNCIONÁRIOS ===== -->
+    <div id="tab-funcionarios" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Cadastro de Funcionários</div>
+        <div class="controls">
+          <input type="text" id="funcSearch" placeholder="Buscar por nome ou matrícula..." oninput="renderFuncionarios()">
+          <button class="btn" onclick="novoFuncionario()">+ Novo Funcionário</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Matrícula</th><th>Nome</th><th>Função</th><th>Setor</th><th>Ação</th></tr></thead>
+          <tbody id="funcionariosTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== OBRAS ===== -->
+    <div id="tab-obras" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Cadastro de Obras</div>
+        <div class="controls">
+          <input type="text" id="obraSearch" placeholder="Buscar por nome..." oninput="renderObras()">
+          <button class="btn" onclick="novaObra()">+ Nova Obra</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Código</th><th>Nome</th><th>Responsável</th><th>Status</th><th>Ação</th></tr></thead>
+          <tbody id="obrasTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== FORNECEDORES ===== -->
+    <div id="tab-fornecedores" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Cadastro de Fornecedores</div>
+        <div class="controls">
+          <input type="text" id="fornSearch" placeholder="Buscar por razão social..." oninput="renderFornecedores()">
+          <button class="btn" onclick="novoFornecedor()">+ Novo Fornecedor</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Razão Social</th><th>CNPJ</th><th>Contato</th><th>Telefone</th><th>Ação</th></tr></thead>
+          <tbody id="fornecedoresTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== REFEIÇÕES ===== -->
+    <div id="tab-refeicoes" class="tab-panel">
+      <div class="kpi-grid" id="kpiRefeicoes"></div>
+      <div class="section-header">
+        <div class="section-title">Controle de Cartões de Refeição</div>
+        <div class="controls">
+          <button class="btn" onclick="novaRefeicao()">+ Novo Registro</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Local</th><th>Tipo</th><th>Quantidade</th><th>Responsável</th><th>Ação</th></tr></thead>
+          <tbody id="refeicoesTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== TRANSFERÊNCIA ===== -->
+    <div id="tab-transferencia" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Transferência de Material</div>
+        <div class="controls">
+          <button class="btn" onclick="novaTransferencia()">+ Novo Registro</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Origem</th><th>Destino</th><th>Itens</th><th>Anexo</th><th>Ação</th></tr></thead>
+          <tbody id="transferenciasTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== RELATÓRIOS ===== -->
+    <div id="tab-relatorios" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Relatório de Consumo</div>
+        <div class="controls">
+          <select id="relPeriodo" onchange="renderRelatorios()">
+            <option value="todos">Todo o período</option>
+            <option value="30">Últimos 30 dias</option>
+            <option value="90">Últimos 90 dias</option>
+          </select>
+        </div>
+      </div>
+      <div class="kpi-grid" id="kpiRelatorios"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+        <div class="table-wrap" style="padding:16px">
+          <h4 style="font-size:11px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px">Top 10 Itens — Valor Consumido</h4>
+          <div style="height:280px;position:relative"><canvas id="chartValor"></canvas></div>
+        </div>
+        <div class="table-wrap" style="padding:16px">
+          <h4 style="font-size:11px;color:var(--text-dim);text-transform:uppercase;margin-bottom:10px">Consumo por Obra</h4>
+          <div style="height:280px;position:relative"><canvas id="chartObra"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ==================== ITEM MODAL ==================== -->
+<div class="modal-bg" id="itemModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="itemModalTitle">Novo Item</div>
+      <button class="modal-close" onclick="closeModal('itemModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Código</label><input id="item_cod" placeholder="COD-001"></div>
+        <div class="form-group"><label>Categoria</label><input id="item_cat" placeholder="Ex: Ferragem"></div>
+        <div class="form-group full"><label>Descrição</label><input id="item_desc" placeholder="Descrição do item"></div>
+        <div class="form-group"><label>Unidade</label><input id="item_un" placeholder="UN, KG, M..."></div>
+        <div class="form-group"><label>Mínimo</label><input id="item_min" type="number" min="0" value="0"></div>
+        <div class="form-group"><label>Estoque Atual</label><input id="item_qtd" type="number" min="0" value="0"></div>
+        <div class="form-group"><label>Custo Unit. (R$)</label><input id="item_custo" type="number" step="0.01" min="0" value="0"></div>
+        <div class="form-group"><label>Localização</label><input id="item_loc" placeholder="Ex: Rack A1"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('itemModal')">Cancelar</button>
+      <button class="btn" id="itemSaveBtn" onclick="salvarItem()">Cadastrar Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Perfil Modal -->
+<div class="modal-bg" id="perfilModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="perfilModalTitle">Novo Perfil</div>
+      <button class="modal-close" onclick="closeModal('perfilModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Código</label><input id="prf_cod" placeholder="PRF-001"></div>
+        <div class="form-group full"><label>Descrição</label><input id="prf_desc" placeholder="Ex: Perfil U 40x20mm"></div>
+        <div class="form-group"><label>Linha</label><input id="prf_linha" placeholder="Ex: Linha 25"></div>
+        <div class="form-group"><label>Cor/Acabamento</label><input id="prf_cor" placeholder="Ex: Natural"></div>
+        <div class="form-group"><label>Medida (mm)</label><input id="prf_medida" type="number" placeholder="Ex: 6000"></div>
+        <div class="form-group"><label>Peso (kg/m)</label><input id="prf_peso" type="number" step="0.01"></div>
+        <div class="form-group"><label>Barras em Estoque</label><input id="prf_barras" type="number" min="0" value="0"></div>
+        <div class="form-group"><label>Custo por Metro (R$)</label><input id="prf_custo" type="number" step="0.01" value="0"></div>
+        <div class="form-group"><label>Fornecedor</label><input id="prf_forn" placeholder="Nome do fornecedor"></div>
+        <div class="form-group"><label>Localização</label><input id="prf_loc" placeholder="Ex: Rack A1"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('perfilModal')">Cancelar</button>
+      <button class="btn" id="perfilSaveBtn" onclick="salvarPerfil()">Cadastrar Perfil</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entrada Modal -->
+<div class="modal-bg" id="entradaModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Entrada</div>
+      <button class="modal-close" onclick="closeModal('entradaModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Data</label><input id="ent_data" type="date"></div>
+        <div class="form-group full"><label>Item</label>
+          <select id="ent_item" onchange="autoFillEntrada()"></select>
+        </div>
+        <div class="form-group"><label>Quantidade</label><input id="ent_qtd" type="number" min="1" value="1"></div>
+        <div class="form-group"><label>Custo Unit. (R$)</label><input id="ent_custo" type="number" step="0.01"></div>
+        <div class="form-group"><label>Nº NF</label><input id="ent_nf" placeholder="NF-XXXXX"></div>
+        <div class="form-group"><label>Fornecedor</label><input id="ent_forn" placeholder="Nome do fornecedor"></div>
+        <div class="form-group full"><label>Obra (opcional)</label><input id="ent_obra" placeholder="Nome da obra/projeto"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('entradaModal')">Cancelar</button>
+      <button class="btn" onclick="salvarEntrada()">Registrar Entrada</button>
+    </div>
+  </div>
+</div>
+
+<!-- Saída Modal -->
+<div class="modal-bg" id="saidaModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Saída</div>
+      <button class="modal-close" onclick="closeModal('saidaModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Data</label><input id="sai_data" type="date"></div>
+        <div class="form-group full"><label>Item</label>
+          <select id="sai_item"></select>
+        </div>
+        <div class="form-group"><label>Quantidade</label><input id="sai_qtd" type="number" min="1" value="1"></div>
+        <div class="form-group"><label>Obra</label><input id="sai_obra" placeholder="Nome da obra/projeto"></div>
+        <div class="form-group"><label>Nº OS</label><input id="sai_os" placeholder="OS-XXXX"></div>
+        <div class="form-group"><label>Responsável</label><input id="sai_resp" placeholder="Nome do responsável"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('saidaModal')">Cancelar</button>
+      <button class="btn" onclick="salvarSaida()">Registrar Saída</button>
+    </div>
+  </div>
+</div>
+
+<!-- Empréstimo Modal -->
+<div class="modal-bg" id="emprestimoModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Novo Empréstimo</div>
+      <button class="modal-close" onclick="closeModal('emprestimoModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Maleta (opcional)</label>
+          <select id="ferr_maleta" onchange="autoFillMaleta()">
+            <option value="">Nenhuma — ferramenta avulsa</option>
+          </select>
+        </div>
+        <div class="form-group full"><label>Descrição</label><input id="ferr_desc" placeholder="Nome da ferramenta"></div>
+        <div class="form-group"><label>Patrimônio</label><input id="ferr_pat" placeholder="Nº Patrimônio"></div>
+        <div class="form-group"><label>Número de Série</label><input id="ferr_serie" placeholder="Opcional"></div>
+        <div class="form-group"><label>Funcionário</label><input id="ferr_func" placeholder="Nome completo"></div>
+        <div class="form-group"><label>Matrícula</label><input id="ferr_mat" placeholder="Opcional"></div>
+        <div class="form-group"><label>Obra</label><input id="ferr_obra" placeholder="Nome da obra (opcional)"></div>
+        <div class="form-group"><label>Data de Retirada</label><input id="ferr_ret" type="date"></div>
+        <div class="form-group"><label>Previsão de Devolução</label><input id="ferr_prev" type="date"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('emprestimoModal')">Cancelar</button>
+      <button class="btn" onclick="salvarEmprestimo()">Registrar Empréstimo</button>
+    </div>
+  </div>
+</div>
+
+<!-- Maletas Modal -->
+<div class="modal-bg" id="maletasModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title">Maletas de Ferramentas</div>
+      <button class="modal-close" onclick="closeModal('maletasModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Código</label><input id="mlt_cod" placeholder="MLT-001"></div>
+        <div class="form-group"><label>Nome</label><input id="mlt_nome" placeholder="Ex: Maleta Elétrica"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens da Maleta</label>
+      <div style="display:flex;gap:8px;margin:8px 0">
+        <select id="mlt_item_sel" style="flex:1"></select>
+        <input id="mlt_item_qtd" type="number" min="1" value="1" style="width:80px">
+        <button type="button" class="btn small" onclick="addItemMaleta()">+ Add</button>
+      </div>
+      <div id="maletaItensPreview" style="margin-bottom:16px"></div>
+      <button class="btn" onclick="salvarMaleta()">Cadastrar Maleta</button>
+      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Código</th><th>Nome</th><th>Conteúdo</th><th>Ação</th></tr></thead>
+          <tbody id="maletasTable"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('maletasModal')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entrega EPI Modal -->
+<div class="modal-bg" id="entregaEpiModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title">Entrega de EPI</div>
+      <button class="modal-close" onclick="closeModal('entregaEpiModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Funcionário</label><input id="epi_func" placeholder="Nome completo"></div>
+        <div class="form-group"><label>Matrícula</label><input id="epi_mat" placeholder="Opcional"></div>
+        <div class="form-group"><label>Função</label><input id="epi_funcao" placeholder="Opcional"></div>
+        <div class="form-group"><label>Data de Entrega</label><input id="epi_data" type="date"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens de EPI</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0">
+        <input id="epi_item_nome" placeholder="EPI (ex: Luva)">
+        <input id="epi_item_ca" placeholder="Nº CA">
+        <input id="epi_item_qtd" type="number" min="1" value="1" placeholder="Qtd">
+        <input id="epi_item_val" type="number" min="1" value="365" placeholder="Validade (dias)">
+        <button type="button" class="btn small" onclick="addItemEpi()" style="grid-column:1/-1">+ Adicionar Item</button>
+      </div>
+      <div id="epiItensPreview" style="margin-bottom:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('entregaEpiModal')">Cancelar</button>
+      <button class="btn" onclick="salvarEntregaEpi()">Registrar Entrega</button>
+    </div>
+  </div>
+</div>
+
+<!-- Funcionário Modal -->
+<div class="modal-bg" id="funcionarioModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="funcModalTitle">Novo Funcionário</div>
+      <button class="modal-close" onclick="closeModal('funcionarioModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Matrícula</label><input id="func_mat" placeholder="MAT-001"></div>
+        <div class="form-group"><label>Nome</label><input id="func_nome" placeholder="Nome completo"></div>
+        <div class="form-group"><label>Função</label><input id="func_funcao" placeholder="Ex: Soldador"></div>
+        <div class="form-group"><label>Setor</label><input id="func_setor" placeholder="Ex: Fábrica"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('funcionarioModal')">Cancelar</button>
+      <button class="btn" id="funcSaveBtn" onclick="salvarFuncionario()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Obra Modal -->
+<div class="modal-bg" id="obraModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="obraModalTitle">Nova Obra</div>
+      <button class="modal-close" onclick="closeModal('obraModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Código</label><input id="obra_cod" placeholder="OBR-001"></div>
+        <div class="form-group"><label>Nome da Obra</label><input id="obra_nome" placeholder="Nome"></div>
+        <div class="form-group"><label>Responsável</label><input id="obra_resp" placeholder="Nome do responsável"></div>
+        <div class="form-group"><label>Status</label>
+          <select id="obra_status"><option>Ativa</option><option>Concluída</option><option>Paralisada</option></select>
+        </div>
+        <div class="form-group full"><label>Endereço</label><input id="obra_endereco" placeholder="Endereço da obra"></div>
+        <div class="form-group full"><label>Razão Social (Cliente)</label><input id="obra_razao" placeholder="Ex: Condomínio..."></div>
+        <div class="form-group"><label>CNPJ</label><input id="obra_cnpj" placeholder="00.000.000/0000-00"></div>
+        <div class="form-group"><label>Comprador</label><input id="obra_comprador" placeholder="Nome do comprador"></div>
+        <div class="form-group"><label>Forma de Pagamento</label><input id="obra_pagamento" placeholder="Ex: 30 DD"></div>
+        <div class="form-group"><label>Prazo de Entrega</label><input id="obra_prazo" placeholder="Ex: 5 dias"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('obraModal')">Cancelar</button>
+      <button class="btn" id="obraSaveBtn" onclick="salvarObra()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fornecedor Modal -->
+<div class="modal-bg" id="fornecedorModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="fornModalTitle">Novo Fornecedor</div>
+      <button class="modal-close" onclick="closeModal('fornecedorModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Razão Social</label><input id="forn_razao" placeholder="Nome do fornecedor"></div>
+        <div class="form-group"><label>CNPJ</label><input id="forn_cnpj" placeholder="00.000.000/0000-00"></div>
+        <div class="form-group"><label>CEP</label><input id="forn_cep" placeholder="00000-000"></div>
+        <div class="form-group full"><label>Endereço</label><input id="forn_endereco" placeholder="Endereço completo"></div>
+        <div class="form-group"><label>Contato</label><input id="forn_contato" placeholder="Nome do contato"></div>
+        <div class="form-group"><label>Telefone</label><input id="forn_tel" placeholder="(00) 00000-0000"></div>
+        <div class="form-group full"><label>E-mail</label><input id="forn_email" placeholder="email@fornecedor.com"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('fornecedorModal')">Cancelar</button>
+      <button class="btn" id="fornSaveBtn" onclick="salvarFornecedor()">Cadastrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Refeição Modal -->
+<div class="modal-bg" id="refeicaoModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Novo Registro de Refeição</div>
+      <button class="modal-close" onclick="closeModal('refeicaoModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Data</label><input id="ref_data" type="date"></div>
+        <div class="form-group"><label>Local</label>
+          <select id="ref_local" onchange="toggleObraRef()"><option>Fábrica</option><option>Obra</option></select>
+        </div>
+        <div class="form-group full" id="ref_obraWrap" style="display:none"><label>Nome da Obra</label><input id="ref_obra" placeholder="Nome da obra"></div>
+        <div class="form-group"><label>Tipo</label>
+          <select id="ref_tipo"><option>Café da Manhã</option><option>Almoço</option><option>Lanche</option></select>
+        </div>
+        <div class="form-group"><label>Quantidade</label><input id="ref_qtd" type="number" min="1" value="1"></div>
+        <div class="form-group full"><label>Responsável</label><input id="ref_resp" placeholder="Nome do responsável"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('refeicaoModal')">Cancelar</button>
+      <button class="btn" onclick="salvarRefeicao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transferência Modal -->
+<div class="modal-bg" id="transferenciaModal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header">
+      <div class="modal-title">Nova Transferência de Material</div>
+      <button class="modal-close" onclick="closeModal('transferenciaModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group"><label>Data</label><input id="trf_data" type="date"></div>
+        <div class="form-group"><label>Nº Série</label><input id="trf_serie" placeholder="Opcional"></div>
+        <div class="form-group"><label>Origem</label><input id="trf_origem" placeholder="Ex: Fábrica"></div>
+        <div class="form-group"><label>Destino</label><input id="trf_destino" placeholder="Nome da obra"></div>
+        <div class="form-group"><label>Transportadora</label><input id="trf_transp" placeholder="Opcional"></div>
+        <div class="form-group"><label>Placa</label><input id="trf_placa" placeholder="Opcional"></div>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens</label>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0">
+        <input id="trf_item_desc" placeholder="Descrição">
+        <input id="trf_item_qtd" type="number" min="1" value="1" placeholder="Qtd">
+        <input id="trf_item_un" placeholder="Unidade">
+        <button type="button" class="btn small" onclick="addItemTransferencia()" style="grid-column:1/-1">+ Adicionar Item</button>
+      </div>
+      <div id="trfItensPreview" style="margin-bottom:12px"></div>
+      <div class="form-grid">
+        <div class="form-group"><label>Resp. Saída</label><input id="trf_respSaida" placeholder="Nome"></div>
+        <div class="form-group"><label>Resp. Recebimento</label><input id="trf_respReceb" placeholder="Nome"></div>
+        <div class="form-group full"><label>Anexo (foto/PDF do formulário assinado)</label>
+          <input id="trf_anexo" type="file" accept="image/*,.pdf">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('transferenciaModal')">Cancelar</button>
+      <button class="btn" onclick="salvarTransferencia()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-bg" id="confirmModal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title" id="confirmTitle">Confirmar ação</div>
+      <button class="modal-close" onclick="closeModal('confirmModal')">✕</button>
+    </div>
+    <div class="modal-body"><p id="confirmMsg" style="font-size:13px;color:var(--text-dim)"></p></div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('confirmModal')">Cancelar</button>
+      <button class="btn danger" id="confirmBtn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO SUPABASE — TROCAR PELOS SEUS VALORES REAIS
+// ============================================================
+const SUPABASE_URL = "https://umavqybqaayrlojiwqnl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVtYXZxeWJxYWF5cmxvaml3cW5sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMjU0MTYsImV4cCI6MjA5OTcwMTQxNn0.vZW1buH1wIp_OF6OSKb22QIInVmR6YDwjGXeue02TEU";
+let supabase;
+
+function iniciarSupabaseClient() {
+  supabase = window.__createSupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  verificarSessao();
+}
+
+if (window.__createSupabaseClient) {
+  iniciarSupabaseClient();
+} else {
+  window.addEventListener('supabaseLibReady', iniciarSupabaseClient, { once: true });
+}
+
+// ============================================================
+// AUTENTICAÇÃO
+// ============================================================
+async function fazerLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const senha = document.getElementById('loginSenha').value;
+  document.getElementById('loginErro').textContent = '';
+  const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+  if (error) { document.getElementById('loginErro').textContent = 'E-mail ou senha inválidos.'; return; }
+  await entrarNoApp();
+}
+
+async function fazerLogout() {
+  await supabase.auth.signOut();
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
+
+async function entrarNoApp() {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  await carregarItens();
+  await carregarPerfis();
+  await carregarEntradas();
+  await carregarSaidas();
+  await carregarMaletas();
+  await carregarFerramentas();
+  await carregarEpis();
+  await carregarFuncionarios();
+  await carregarObras();
+  await carregarFornecedores();
+  await carregarRefeicoes();
+  await carregarTransferencias();
+  renderRelatorios();
+  renderDashboard();
+}
+
+async function verificarSessao() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) await entrarNoApp();
+}
+
+// ============================================================
+// UTILITÁRIOS
+// ============================================================
+function fmt(n) { return (n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+function toast(msg, cor) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = cor || 'var(--green)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function statusSalvando(msg) {
+  const el = document.getElementById('saveStatus');
+  if (el) { el.textContent = msg; setTimeout(() => { el.textContent = ''; }, 2000); }
+}
+
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const btn = document.getElementById('navBtn-' + id);
+  if (btn) btn.classList.add('active');
+  if (id === 'relatorios') setTimeout(renderRelatorios, 50);
+}
+
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+let confirmCallback = null;
+function askConfirm(msg, onConfirm, title) {
+  document.getElementById('confirmTitle').textContent = title || 'Confirmar ação';
+  document.getElementById('confirmMsg').textContent = msg;
+  confirmCallback = onConfirm;
+  openModal('confirmModal');
+}
+document.getElementById('confirmBtn').onclick = function () {
+  closeModal('confirmModal');
+  if (confirmCallback) { const cb = confirmCallback; confirmCallback = null; cb(); }
+};
+
+// ============================================================
+// MÓDULO: ITENS (Estoque) — CRUD completo via Supabase
+// ============================================================
+let itens = [];
+let editandoItemCod = null;
+
+async function carregarItens() {
+  const { data, error } = await supabase.from('itens').select('*').order('codigo');
+  if (error) { toast('Erro ao carregar itens: ' + error.message, 'var(--rust)'); return; }
+  itens = data || [];
+  renderEstoque();
+  popularSelectItens();
+}
+
+function estoqueStatus(item) {
+  if (item.quantidade < item.minimo) return { label: '⚠ Crítico', cls: 'badge-danger' };
+  if (item.quantidade <= item.minimo * 1.3) return { label: '⏰ Atenção', cls: 'badge-warning' };
+  return { label: '✔ OK', cls: 'badge-ok' };
+}
+
+function renderEstoque() {
+  const q = (document.getElementById('estoqueSearch')?.value || '').toLowerCase();
+  const list = itens.filter(i => !q || i.codigo.toLowerCase().includes(q) || i.descricao.toLowerCase().includes(q));
+  document.getElementById('estoqueTable').innerHTML = list.map(i => {
+    const s = estoqueStatus(i);
+    return `<tr>
+      <td><code>${i.codigo}</code></td><td>${i.descricao}</td><td>${i.categoria || '—'}</td><td>${i.unidade || '—'}</td>
+      <td>${i.minimo}</td><td><strong>${i.quantidade}</strong></td>
+      <td><span class="badge ${s.cls}">${s.label}</span></td>
+      <td>R$ ${fmt(i.quantidade * i.custo)}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarItem('${i.codigo}')">Editar</button>
+        <button class="btn small danger" onclick="excluirItem('${i.codigo}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">Nenhum item cadastrado ainda.</td></tr>`;
+}
+
+function novoItem() {
+  editandoItemCod = null;
+  document.getElementById('itemModalTitle').textContent = 'Novo Item';
+  document.getElementById('itemSaveBtn').textContent = 'Cadastrar Item';
+  ['item_cod','item_cat','item_desc','item_un','item_loc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('item_cod').disabled = false;
+  document.getElementById('item_min').value = 0;
+  document.getElementById('item_qtd').value = 0;
+  document.getElementById('item_custo').value = 0;
+  openModal('itemModal');
+}
+
+function editarItem(codigo) {
+  const i = itens.find(x => x.codigo === codigo);
+  if (!i) return;
+  editandoItemCod = codigo;
+  document.getElementById('itemModalTitle').textContent = 'Editar Item';
+  document.getElementById('itemSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('item_cod').value = i.codigo;
+  document.getElementById('item_cod').disabled = true;
+  document.getElementById('item_cat').value = i.categoria || '';
+  document.getElementById('item_desc').value = i.descricao || '';
+  document.getElementById('item_un').value = i.unidade || '';
+  document.getElementById('item_min').value = i.minimo || 0;
+  document.getElementById('item_qtd').value = i.quantidade || 0;
+  document.getElementById('item_custo').value = i.custo || 0;
+  document.getElementById('item_loc').value = i.localizacao || '';
+  openModal('itemModal');
+}
+
+async function salvarItem() {
+  const codigo = document.getElementById('item_cod').value.trim();
+  const descricao = document.getElementById('item_desc').value.trim();
+  if (!codigo || !descricao) { toast('Preencha código e descrição!', 'var(--rust)'); return; }
+
+  const dados = {
+    codigo,
+    categoria: document.getElementById('item_cat').value,
+    descricao,
+    unidade: document.getElementById('item_un').value,
+    minimo: +document.getElementById('item_min').value || 0,
+    quantidade: +document.getElementById('item_qtd').value || 0,
+    custo: +document.getElementById('item_custo').value || 0,
+    localizacao: document.getElementById('item_loc').value,
+  };
+
+  let resultado;
+  if (editandoItemCod) {
+    resultado = await supabase.from('itens').update(dados).eq('codigo', editandoItemCod);
+  } else {
+    resultado = await supabase.from('itens').insert(dados);
+  }
+
+  if (resultado.error) { toast('Erro ao salvar: ' + resultado.error.message, 'var(--rust)'); return; }
+
+  await registrarLog(editandoItemCod ? `Item atualizado: ${codigo}` : `Item cadastrado: ${codigo}`);
+  closeModal('itemModal');
+  await carregarItens();
+  renderDashboard();
+  toast(editandoItemCod ? '✔ Item atualizado!' : '✔ Item cadastrado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirItem(codigo) {
+  askConfirm(`Excluir o item ${codigo} do estoque? Esta ação não pode ser desfeita.`, async () => {
+    const { error } = await supabase.from('itens').delete().eq('codigo', codigo);
+    if (error) { toast('Erro ao excluir: ' + error.message, 'var(--rust)'); return; }
+    await registrarLog(`Item excluído: ${codigo}`);
+    await carregarItens();
+    renderDashboard();
+    toast('🗑 Item excluído do estoque.');
+  }, 'Excluir Item');
+}
+
+// ============================================================
+// LOG DE ALTERAÇÕES
+// ============================================================
+async function registrarLog(mensagem) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('log_alteracoes').insert({ mensagem, usuario_id: user?.id });
+  } catch (e) { /* log é best-effort, não trava o app */ }
+}
+
+// ============================================================
+// MÓDULO: PERFIS
+// ============================================================
+let perfis = [];
+let editandoPerfilCod = null;
+
+async function carregarPerfis() {
+  const { data, error } = await supabase.from('perfis').select('*').order('codigo');
+  if (error) { toast('Erro ao carregar perfis: ' + error.message, 'var(--rust)'); return; }
+  perfis = data || [];
+  renderPerfis();
+  popularSelectItens();
+}
+
+function renderPerfis() {
+  const q = (document.getElementById('perfilSearch')?.value || '').toLowerCase();
+  const list = perfis.filter(p => !q || p.codigo.toLowerCase().includes(q) || p.descricao.toLowerCase().includes(q));
+  document.getElementById('perfisTable').innerHTML = list.map(p => `<tr>
+      <td><code>${p.codigo}</code></td><td>${p.descricao}</td><td>${p.linha || '—'}</td><td>${p.cor || '—'}</td>
+      <td>${p.medida_mm || '—'}</td><td><strong>${p.barras || 0}</strong></td><td>R$ ${fmt(p.custo)}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarPerfil('${p.codigo}')">Editar</button>
+        <button class="btn small danger" onclick="excluirPerfil('${p.codigo}')">Excluir</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="8" class="empty">Nenhum perfil cadastrado ainda.</td></tr>`;
+}
+
+function novoPerfil() {
+  editandoPerfilCod = null;
+  document.getElementById('perfilModalTitle').textContent = 'Novo Perfil';
+  document.getElementById('perfilSaveBtn').textContent = 'Cadastrar Perfil';
+  ['prf_cod','prf_desc','prf_linha','prf_cor','prf_medida','prf_peso','prf_forn','prf_loc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('prf_cod').disabled = false;
+  document.getElementById('prf_barras').value = 0;
+  document.getElementById('prf_custo').value = 0;
+  openModal('perfilModal');
+}
+
+function editarPerfil(codigo) {
+  const p = perfis.find(x => x.codigo === codigo);
+  if (!p) return;
+  editandoPerfilCod = codigo;
+  document.getElementById('perfilModalTitle').textContent = 'Editar Perfil';
+  document.getElementById('perfilSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('prf_cod').value = p.codigo;
+  document.getElementById('prf_cod').disabled = true;
+  document.getElementById('prf_desc').value = p.descricao || '';
+  document.getElementById('prf_linha').value = p.linha || '';
+  document.getElementById('prf_cor').value = p.cor || '';
+  document.getElementById('prf_medida').value = p.medida_mm || '';
+  document.getElementById('prf_peso').value = p.peso_kg_m || '';
+  document.getElementById('prf_barras').value = p.barras || 0;
+  document.getElementById('prf_custo').value = p.custo || 0;
+  document.getElementById('prf_forn').value = p.fornecedor || '';
+  document.getElementById('prf_loc').value = p.localizacao || '';
+  openModal('perfilModal');
+}
+
+async function salvarPerfil() {
+  const codigo = document.getElementById('prf_cod').value.trim();
+  const descricao = document.getElementById('prf_desc').value.trim();
+  if (!codigo || !descricao) { toast('Preencha código e descrição!', 'var(--rust)'); return; }
+  const dados = {
+    codigo, descricao,
+    linha: document.getElementById('prf_linha').value,
+    cor: document.getElementById('prf_cor').value,
+    medida_mm: +document.getElementById('prf_medida').value || null,
+    peso_kg_m: +document.getElementById('prf_peso').value || null,
+    barras: +document.getElementById('prf_barras').value || 0,
+    custo: +document.getElementById('prf_custo').value || 0,
+    fornecedor: document.getElementById('prf_forn').value,
+    localizacao: document.getElementById('prf_loc').value,
+  };
+  const resultado = editandoPerfilCod
+    ? await supabase.from('perfis').update(dados).eq('codigo', editandoPerfilCod)
+    : await supabase.from('perfis').insert(dados);
+  if (resultado.error) { toast('Erro ao salvar: ' + resultado.error.message, 'var(--rust)'); return; }
+  await registrarLog(editandoPerfilCod ? `Perfil atualizado: ${codigo}` : `Perfil cadastrado: ${codigo}`);
+  closeModal('perfilModal');
+  await carregarPerfis();
+  toast(editandoPerfilCod ? '✔ Perfil atualizado!' : '✔ Perfil cadastrado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirPerfil(codigo) {
+  askConfirm(`Excluir o perfil ${codigo}?`, async () => {
+    const { error } = await supabase.from('perfis').delete().eq('codigo', codigo);
+    if (error) { toast('Erro ao excluir: ' + error.message, 'var(--rust)'); return; }
+    await registrarLog(`Perfil excluído: ${codigo}`);
+    await carregarPerfis();
+    toast('🗑 Perfil excluído.');
+  }, 'Excluir Perfil');
+}
+
+// ============================================================
+// MÓDULO: ENTRADAS E SAÍDAS
+// ============================================================
+function popularSelectItens() {
+  const opts = itens.map(i => `<option value="${i.codigo}">${i.codigo} — ${i.descricao}</option>`).join('');
+  const selEnt = document.getElementById('ent_item');
+  const selSai = document.getElementById('sai_item');
+  if (selEnt) selEnt.innerHTML = opts;
+  if (selSai) selSai.innerHTML = opts;
+}
+
+function autoFillEntrada() {
+  const cod = document.getElementById('ent_item').value;
+  const i = itens.find(x => x.codigo === cod);
+  if (i) document.getElementById('ent_custo').value = i.custo;
+}
+
+async function carregarEntradas() {
+  const { data, error } = await supabase.from('entradas').select('*').order('data', { ascending: false }).limit(100);
+  if (error) return;
+  document.getElementById('entradasTable').innerHTML = (data || []).map(e => `<tr>
+      <td>${e.data}</td><td><code>${e.item_codigo}</code></td><td>${e.descricao}</td><td>${e.quantidade}</td>
+      <td>R$ ${fmt(e.custo)}</td><td>${e.nf || '—'}</td><td>${e.fornecedor || '—'}</td><td>${e.obra || '—'}</td>
+    </tr>`).join('') || `<tr><td colspan="8" class="empty">Nenhuma entrada registrada.</td></tr>`;
+}
+
+async function salvarEntrada() {
+  const cod = document.getElementById('ent_item').value;
+  const qtd = +document.getElementById('ent_qtd').value;
+  if (!cod || !qtd) { toast('Selecione o item e a quantidade!', 'var(--rust)'); return; }
+  const item = itens.find(i => i.codigo === cod);
+  const custo = +document.getElementById('ent_custo').value || item?.custo || 0;
+
+  const { error: e1 } = await supabase.from('entradas').insert({
+    data: document.getElementById('ent_data').value, item_codigo: cod, descricao: item?.descricao || '',
+    quantidade: qtd, custo, nf: document.getElementById('ent_nf').value,
+    fornecedor: document.getElementById('ent_forn').value, obra: document.getElementById('ent_obra').value,
+  });
+  if (e1) { toast('Erro ao registrar entrada: ' + e1.message, 'var(--rust)'); return; }
+
+  const { error: e2 } = await supabase.from('itens').update({ quantidade: (item.quantidade || 0) + qtd, custo }).eq('codigo', cod);
+  if (e2) { toast('Entrada salva, mas houve erro ao atualizar o estoque: ' + e2.message, 'var(--rust)'); }
+
+  await registrarLog(`Entrada registrada: ${qtd}x ${cod}`);
+  closeModal('entradaModal');
+  await carregarItens();
+  await carregarEntradas();
+  renderDashboard();
+  toast('✔ Entrada registrada com sucesso!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+async function carregarSaidas() {
+  const { data, error } = await supabase.from('saidas').select('*').order('data', { ascending: false }).limit(100);
+  if (error) return;
+  document.getElementById('saidasTable').innerHTML = (data || []).map(s => `<tr>
+      <td>${s.data}</td><td><code>${s.item_codigo}</code></td><td>${s.descricao}</td><td>${s.quantidade}</td>
+      <td>${s.obra || '—'}</td><td>${s.os || '—'}</td><td>${s.responsavel || '—'}</td>
+    </tr>`).join('') || `<tr><td colspan="7" class="empty">Nenhuma saída registrada.</td></tr>`;
+}
+
+async function salvarSaida() {
+  const cod = document.getElementById('sai_item').value;
+  const qtd = +document.getElementById('sai_qtd').value;
+  if (!cod || !qtd) { toast('Selecione o item e a quantidade!', 'var(--rust)'); return; }
+  const item = itens.find(i => i.codigo === cod);
+  if (item && item.quantidade < qtd) { toast('Estoque insuficiente!', 'var(--rust)'); return; }
+
+  const { error: e1 } = await supabase.from('saidas').insert({
+    data: document.getElementById('sai_data').value, item_codigo: cod, descricao: item?.descricao || '',
+    quantidade: qtd, obra: document.getElementById('sai_obra').value,
+    os: document.getElementById('sai_os').value, responsavel: document.getElementById('sai_resp').value,
+  });
+  if (e1) { toast('Erro ao registrar saída: ' + e1.message, 'var(--rust)'); return; }
+
+  const { error: e2 } = await supabase.from('itens').update({ quantidade: (item.quantidade || 0) - qtd }).eq('codigo', cod);
+  if (e2) { toast('Saída salva, mas houve erro ao atualizar o estoque: ' + e2.message, 'var(--rust)'); }
+
+  await registrarLog(`Saída registrada: ${qtd}x ${cod}`);
+  closeModal('saidaModal');
+  await carregarItens();
+  await carregarSaidas();
+  renderDashboard();
+  toast('✔ Saída registrada com sucesso!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+// ============================================================
+// MÓDULO: MALETAS
+// ============================================================
+let maletas = [];
+let maletaItensTemp = [];
+
+async function carregarMaletas() {
+  const { data, error } = await supabase.from('maletas').select('*').order('codigo');
+  if (error) return;
+  maletas = data || [];
+  renderMaletas();
+  popularSelectMaleta();
+}
+
+function renderMaletas() {
+  document.getElementById('maletasTable').innerHTML = maletas.map(m => `<tr>
+      <td><code>${m.codigo}</code></td><td>${m.nome}</td>
+      <td>${(m.conteudo || []).map(c => `${c.desc} (${c.qtd}x)`).join(', ') || '—'}</td>
+      <td><button class="btn small danger" onclick="excluirMaleta('${m.codigo}')">Excluir</button></td>
+    </tr>`).join('') || `<tr><td colspan="4" class="empty">Nenhuma maleta cadastrada.</td></tr>`;
+  const selItem = document.getElementById('mlt_item_sel');
+  if (selItem) selItem.innerHTML = itens.map(i => `<option value="${i.codigo}">${i.codigo} — ${i.descricao}</option>`).join('');
+}
+
+function popularSelectMaleta() {
+  const sel = document.getElementById('ferr_maleta');
+  if (sel) sel.innerHTML = '<option value="">Nenhuma — ferramenta avulsa</option>' + maletas.map(m => `<option value="${m.codigo}">${m.codigo} — ${m.nome}</option>`).join('');
+}
+
+function addItemMaleta() {
+  const cod = document.getElementById('mlt_item_sel').value;
+  const qtd = +document.getElementById('mlt_item_qtd').value || 0;
+  const i = itens.find(x => x.codigo === cod);
+  if (!i || qtd <= 0) { toast('Selecione um item e quantidade válida!', 'var(--rust)'); return; }
+  const existente = maletaItensTemp.find(m => m.cod === cod);
+  if (existente) existente.qtd += qtd; else maletaItensTemp.push({ cod, desc: i.descricao, qtd });
+  renderMaletaItensPreview();
+}
+
+function removerItemMaleta(idx) { maletaItensTemp.splice(idx, 1); renderMaletaItensPreview(); }
+
+function renderMaletaItensPreview() {
+  document.getElementById('maletaItensPreview').innerHTML = maletaItensTemp.length
+    ? maletaItensTemp.map((it, idx) => `<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:4px;margin-bottom:4px;font-size:13px"><span>${it.desc} — ${it.qtd}x</span><button class="btn small danger" onclick="removerItemMaleta(${idx})">Remover</button></div>`).join('')
+    : `<div class="empty" style="padding:6px 0">Nenhum item adicionado</div>`;
+}
+
+async function salvarMaleta() {
+  const codigo = document.getElementById('mlt_cod').value.trim();
+  const nome = document.getElementById('mlt_nome').value.trim();
+  if (!codigo || !nome) { toast('Preencha código e nome!', 'var(--rust)'); return; }
+  if (!maletaItensTemp.length) { toast('Adicione ao menos um item!', 'var(--rust)'); return; }
+  const { error } = await supabase.from('maletas').insert({ codigo, nome, conteudo: maletaItensTemp });
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+  await registrarLog(`Maleta cadastrada: ${codigo}`);
+  document.getElementById('mlt_cod').value = '';
+  document.getElementById('mlt_nome').value = '';
+  maletaItensTemp = [];
+  renderMaletaItensPreview();
+  await carregarMaletas();
+  toast('✔ Maleta cadastrada!');
+}
+
+function excluirMaleta(codigo) {
+  askConfirm(`Excluir a maleta ${codigo}?`, async () => {
+    const { error } = await supabase.from('maletas').delete().eq('codigo', codigo);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarMaletas();
+    toast('🗑 Maleta excluída.');
+  }, 'Excluir Maleta');
+}
+
+function abrirGerenciarMaletas() { renderMaletas(); openModal('maletasModal'); }
+
+// ============================================================
+// MÓDULO: FERRAMENTAS
+// ============================================================
+let ferramentas = [];
+
+async function carregarFerramentas() {
+  const { data, error } = await supabase.from('ferramentas').select('*').order('data_retirada', { ascending: false });
+  if (error) return;
+  ferramentas = data || [];
+  renderFerramentas();
+}
+
+function ferrStatus(f) {
+  if (f.devolucao_real) return { label: '✔ Devolvida', cls: 'badge-ok' };
+  const hoje = new Date().toISOString().split('T')[0];
+  if (f.previsao_devolucao && f.previsao_devolucao < hoje) return { label: '⚠ Atrasada', cls: 'badge-danger' };
+  return { label: '⏳ Emprestada', cls: 'badge-warning' };
+}
+
+function renderFerramentas() {
+  const q = (document.getElementById('ferrSearch')?.value || '').toLowerCase();
+  const list = ferramentas.filter(f => !q || (f.descricao || '').toLowerCase().includes(q) || (f.funcionario || '').toLowerCase().includes(q));
+  document.getElementById('ferramentasTable').innerHTML = list.map(f => {
+    const s = ferrStatus(f);
+    const devBtn = !f.devolucao_real ? `<button class="btn small" onclick="devolverFerramenta('${f.id}')">Devolver</button>` : '';
+    return `<tr>
+      <td>${f.descricao}</td><td>${f.patrimonio || '—'}</td><td>${f.funcionario}</td>
+      <td>${f.data_retirada || '—'}</td><td>${f.previsao_devolucao || '—'}</td><td>${f.devolucao_real || '—'}</td>
+      <td><span class="badge ${s.cls}">${s.label}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">${devBtn}<button class="btn small danger" onclick="excluirFerramenta('${f.id}')">Excluir</button></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8" class="empty">Nenhum empréstimo registrado.</td></tr>`;
+}
+
+function novoEmprestimo() {
+  ['ferr_desc', 'ferr_pat', 'ferr_serie', 'ferr_func', 'ferr_mat', 'ferr_obra'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ferr_maleta').value = '';
+  document.getElementById('ferr_ret').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ferr_prev').value = '';
+  popularSelectMaleta();
+  openModal('emprestimoModal');
+}
+
+function autoFillMaleta() {
+  const cod = document.getElementById('ferr_maleta').value;
+  const m = maletas.find(x => x.codigo === cod);
+  if (m) document.getElementById('ferr_desc').value = `Maleta: ${m.nome}`;
+}
+
+async function salvarEmprestimo() {
+  const func = document.getElementById('ferr_func').value.trim();
+  const desc = document.getElementById('ferr_desc').value.trim();
+  if (!func || !desc) { toast('Preencha funcionário e descrição!', 'var(--rust)'); return; }
+
+  const maletaCod = document.getElementById('ferr_maleta').value;
+  let conteudoMaleta = null;
+
+  if (maletaCod) {
+    const m = maletas.find(x => x.codigo === maletaCod);
+    if (m && m.conteudo) {
+      for (const c of m.conteudo) {
+        const item = itens.find(i => i.codigo === c.cod);
+        if (!item || item.quantidade < c.qtd) { toast(`Estoque insuficiente de "${c.desc}"!`, 'var(--rust)'); return; }
+      }
+      for (const c of m.conteudo) {
+        const item = itens.find(i => i.codigo === c.cod);
+        await supabase.from('itens').update({ quantidade: item.quantidade - c.qtd }).eq('codigo', c.cod);
+      }
+      conteudoMaleta = m.conteudo;
+    }
+  }
+
+  const { error } = await supabase.from('ferramentas').insert({
+    descricao: desc, patrimonio: document.getElementById('ferr_pat').value,
+    numero_serie: document.getElementById('ferr_serie').value, funcionario: func,
+    matricula: document.getElementById('ferr_mat').value, obra: document.getElementById('ferr_obra').value,
+    data_retirada: document.getElementById('ferr_ret').value, previsao_devolucao: document.getElementById('ferr_prev').value,
+    maleta_codigo: maletaCod || null, conteudo_maleta: conteudoMaleta,
+  });
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+
+  await registrarLog(`Empréstimo registrado: ${desc} — ${func}`);
+  closeModal('emprestimoModal');
+  await carregarItens();
+  await carregarFerramentas();
+  toast('✔ Empréstimo registrado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+async function devolverFerramenta(id) {
+  const f = ferramentas.find(x => x.id === id);
+  if (!f) return;
+  const { error } = await supabase.from('ferramentas').update({
+    devolucao_real: new Date().toISOString().split('T')[0], condicao: 'Boa',
+  }).eq('id', id);
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+
+  if (f.conteudo_maleta) {
+    for (const c of f.conteudo_maleta) {
+      const item = itens.find(i => i.codigo === c.cod);
+      if (item) await supabase.from('itens').update({ quantidade: item.quantidade + c.qtd }).eq('codigo', c.cod);
+    }
+    await carregarItens();
+  }
+
+  await registrarLog(`Devolução registrada: ${f.descricao}`);
+  await carregarFerramentas();
+  toast('✔ Devolução registrada!');
+}
+
+function excluirFerramenta(id) {
+  askConfirm('Excluir este registro de empréstimo?', async () => {
+    const { error } = await supabase.from('ferramentas').delete().eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarFerramentas();
+    toast('🗑 Registro excluído.');
+  }, 'Excluir Registro');
+}
+
+// ============================================================
+// MÓDULO: EPI
+// ============================================================
+let epis = [];
+let epiItensTemp = [];
+
+async function carregarEpis() {
+  const { data, error } = await supabase.from('epis').select('*').order('data_entrega', { ascending: false });
+  if (error) return;
+  epis = data || [];
+  renderEpis();
+}
+
+function epiVenc(e) {
+  if (!e.data_entrega || !e.validade_dias) return null;
+  const d = new Date(e.data_entrega + 'T12:00:00');
+  d.setDate(d.getDate() + e.validade_dias);
+  return d;
+}
+
+function epiStatus(e) {
+  const v = epiVenc(e);
+  if (!v) return { label: '—', cls: 'badge-ok' };
+  const hoje = new Date();
+  const diff = Math.floor((v - hoje) / 86400000);
+  if (diff < 0) return { label: '⚠ Vencido', cls: 'badge-danger' };
+  if (diff <= 30) return { label: '⏰ Vence em breve', cls: 'badge-warning' };
+  return { label: '✔ Válido', cls: 'badge-ok' };
+}
+
+function renderEpis() {
+  const q = (document.getElementById('epiSearch')?.value || '').toLowerCase();
+  const list = epis.filter(e => !q || (e.funcionario || '').toLowerCase().includes(q) || (e.epi || '').toLowerCase().includes(q));
+  document.getElementById('episTable').innerHTML = list.map(e => {
+    const s = epiStatus(e);
+    const v = epiVenc(e);
+    return `<tr>
+      <td>${e.funcionario}</td><td>${e.funcao || '—'}</td><td>${e.epi}</td><td>${e.ca || '—'}</td>
+      <td>${e.quantidade}</td><td>${e.data_entrega}</td><td>${v ? v.toLocaleDateString('pt-BR') : '—'}</td>
+      <td><span class="badge ${s.cls}">${s.label}</span></td>
+      <td><button class="btn small danger" onclick="excluirEpi('${e.id}')">Excluir</button></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="9" class="empty">Nenhuma entrega de EPI registrada.</td></tr>`;
+}
+
+function abrirEntregaEpi() {
+  epiItensTemp = [];
+  ['epi_func', 'epi_mat', 'epi_funcao'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('epi_data').value = new Date().toISOString().split('T')[0];
+  renderEpiItensPreview();
+  openModal('entregaEpiModal');
+}
+
+function addItemEpi() {
+  const nome = document.getElementById('epi_item_nome').value.trim();
+  const ca = document.getElementById('epi_item_ca').value.trim();
+  const qtd = +document.getElementById('epi_item_qtd').value || 0;
+  const val = +document.getElementById('epi_item_val').value || 365;
+  if (!nome || qtd <= 0) { toast('Informe o EPI e a quantidade!', 'var(--rust)'); return; }
+  epiItensTemp.push({ epi: nome, ca, qtd, val });
+  document.getElementById('epi_item_nome').value = '';
+  document.getElementById('epi_item_ca').value = '';
+  document.getElementById('epi_item_qtd').value = 1;
+  document.getElementById('epi_item_val').value = 365;
+  renderEpiItensPreview();
+}
+
+function removerItemEpi(idx) { epiItensTemp.splice(idx, 1); renderEpiItensPreview(); }
+
+function renderEpiItensPreview() {
+  document.getElementById('epiItensPreview').innerHTML = epiItensTemp.length
+    ? epiItensTemp.map((it, idx) => `<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:4px;margin-bottom:4px;font-size:13px"><span>${it.epi}${it.ca ? ' — CA ' + it.ca : ''} — ${it.qtd}x (validade ${it.val}d)</span><button class="btn small danger" onclick="removerItemEpi(${idx})">Remover</button></div>`).join('')
+    : `<div class="empty" style="padding:6px 0">Nenhum item adicionado ainda</div>`;
+}
+
+async function salvarEntregaEpi() {
+  const func = document.getElementById('epi_func').value.trim();
+  if (!func) { toast('Informe o funcionário!', 'var(--rust)'); return; }
+  if (!epiItensTemp.length) { toast('Adicione ao menos um item de EPI!', 'var(--rust)'); return; }
+
+  const data = document.getElementById('epi_data').value;
+  const mat = document.getElementById('epi_mat').value;
+  const funcao = document.getElementById('epi_funcao').value;
+  const entregaId = `ENT-EPI-${Date.now().toString().slice(-6)}`;
+
+  const registros = epiItensTemp.map(it => ({
+    matricula: mat, funcionario: func, funcao,
+    epi: it.epi, ca: it.ca, quantidade: it.qtd,
+    data_entrega: data, validade_dias: it.val, recibo: 'Sim', entrega_id: entregaId,
+  }));
+
+  const { error } = await supabase.from('epis').insert(registros);
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+
+  await registrarLog(`Entrega de EPI registrada: ${func} (${epiItensTemp.length} item(ns))`);
+  closeModal('entregaEpiModal');
+  await carregarEpis();
+  toast('✔ Entrega de EPI registrada!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirEpi(id) {
+  askConfirm('Excluir este registro de EPI?', async () => {
+    const { error } = await supabase.from('epis').delete().eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarEpis();
+    toast('🗑 Registro excluído.');
+  }, 'Excluir Registro');
+}
+
+// ============================================================
+// MÓDULO: FUNCIONÁRIOS
+// ============================================================
+let funcionarios = [];
+let editandoFuncMat = null;
+
+async function carregarFuncionarios() {
+  const { data, error } = await supabase.from('funcionarios').select('*').order('nome');
+  if (error) return;
+  funcionarios = data || [];
+  renderFuncionarios();
+}
+
+function renderFuncionarios() {
+  const q = (document.getElementById('funcSearch')?.value || '').toLowerCase();
+  const list = funcionarios.filter(f => !q || f.nome.toLowerCase().includes(q) || (f.matricula || '').toLowerCase().includes(q));
+  document.getElementById('funcionariosTable').innerHTML = list.map(f => `<tr>
+      <td><code>${f.matricula || '—'}</code></td><td>${f.nome}</td><td>${f.funcao || '—'}</td><td>${f.setor || '—'}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarFuncionario('${f.matricula}')">Editar</button>
+        <button class="btn small danger" onclick="excluirFuncionario('${f.matricula}')">Excluir</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty">Nenhum funcionário cadastrado.</td></tr>`;
+}
+
+function novoFuncionario() {
+  editandoFuncMat = null;
+  document.getElementById('funcModalTitle').textContent = 'Novo Funcionário';
+  document.getElementById('funcSaveBtn').textContent = 'Cadastrar';
+  ['func_mat', 'func_nome', 'func_funcao', 'func_setor'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('func_mat').disabled = false;
+  openModal('funcionarioModal');
+}
+
+function editarFuncionario(matricula) {
+  const f = funcionarios.find(x => x.matricula === matricula);
+  if (!f) return;
+  editandoFuncMat = matricula;
+  document.getElementById('funcModalTitle').textContent = 'Editar Funcionário';
+  document.getElementById('funcSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('func_mat').value = f.matricula || '';
+  document.getElementById('func_mat').disabled = true;
+  document.getElementById('func_nome').value = f.nome || '';
+  document.getElementById('func_funcao').value = f.funcao || '';
+  document.getElementById('func_setor').value = f.setor || '';
+  openModal('funcionarioModal');
+}
+
+async function salvarFuncionario() {
+  const nome = document.getElementById('func_nome').value.trim();
+  if (!nome) { toast('Preencha o nome!', 'var(--rust)'); return; }
+  const dados = {
+    matricula: document.getElementById('func_mat').value,
+    nome, funcao: document.getElementById('func_funcao').value, setor: document.getElementById('func_setor').value,
+  };
+  const resultado = editandoFuncMat
+    ? await supabase.from('funcionarios').update(dados).eq('matricula', editandoFuncMat)
+    : await supabase.from('funcionarios').insert(dados);
+  if (resultado.error) { toast('Erro: ' + resultado.error.message, 'var(--rust)'); return; }
+  await registrarLog(editandoFuncMat ? `Funcionário atualizado: ${nome}` : `Funcionário cadastrado: ${nome}`);
+  closeModal('funcionarioModal');
+  await carregarFuncionarios();
+  toast(editandoFuncMat ? '✔ Atualizado!' : '✔ Cadastrado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirFuncionario(matricula) {
+  askConfirm('Excluir este funcionário?', async () => {
+    const { error } = await supabase.from('funcionarios').delete().eq('matricula', matricula);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarFuncionarios();
+    toast('🗑 Funcionário excluído.');
+  }, 'Excluir Funcionário');
+}
+
+// ============================================================
+// MÓDULO: OBRAS
+// ============================================================
+let obras = [];
+let editandoObraCod = null;
+
+async function carregarObras() {
+  const { data, error } = await supabase.from('obras').select('*').order('nome');
+  if (error) return;
+  obras = data || [];
+  renderObras();
+}
+
+function renderObras() {
+  const q = (document.getElementById('obraSearch')?.value || '').toLowerCase();
+  const list = obras.filter(o => !q || o.nome.toLowerCase().includes(q));
+  document.getElementById('obrasTable').innerHTML = list.map(o => {
+    const cls = o.status === 'Ativa' ? 'badge-ok' : o.status === 'Paralisada' ? 'badge-warning' : 'badge-ok';
+    return `<tr>
+      <td><code>${o.codigo || '—'}</code></td><td>${o.nome}</td><td>${o.responsavel || '—'}</td>
+      <td><span class="badge ${cls}">${o.status}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarObra('${o.codigo}')">Editar</button>
+        <button class="btn small danger" onclick="excluirObra('${o.codigo}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="5" class="empty">Nenhuma obra cadastrada.</td></tr>`;
+}
+
+function novaObra() {
+  editandoObraCod = null;
+  document.getElementById('obraModalTitle').textContent = 'Nova Obra';
+  document.getElementById('obraSaveBtn').textContent = 'Cadastrar';
+  ['obra_cod', 'obra_nome', 'obra_resp', 'obra_endereco', 'obra_razao', 'obra_cnpj', 'obra_comprador', 'obra_pagamento', 'obra_prazo'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('obra_cod').disabled = false;
+  document.getElementById('obra_status').value = 'Ativa';
+  openModal('obraModal');
+}
+
+function editarObra(codigo) {
+  const o = obras.find(x => x.codigo === codigo);
+  if (!o) return;
+  editandoObraCod = codigo;
+  document.getElementById('obraModalTitle').textContent = 'Editar Obra';
+  document.getElementById('obraSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('obra_cod').value = o.codigo || '';
+  document.getElementById('obra_cod').disabled = true;
+  document.getElementById('obra_nome').value = o.nome || '';
+  document.getElementById('obra_resp').value = o.responsavel || '';
+  document.getElementById('obra_status').value = o.status || 'Ativa';
+  document.getElementById('obra_endereco').value = o.endereco || '';
+  document.getElementById('obra_razao').value = o.razao_social || '';
+  document.getElementById('obra_cnpj').value = o.cnpj || '';
+  document.getElementById('obra_comprador').value = o.comprador || '';
+  document.getElementById('obra_pagamento').value = o.forma_pagamento || '';
+  document.getElementById('obra_prazo').value = o.prazo_entrega || '';
+  openModal('obraModal');
+}
+
+async function salvarObra() {
+  const nome = document.getElementById('obra_nome').value.trim();
+  if (!nome) { toast('Preencha o nome da obra!', 'var(--rust)'); return; }
+  const dados = {
+    codigo: document.getElementById('obra_cod').value, nome,
+    responsavel: document.getElementById('obra_resp').value, status: document.getElementById('obra_status').value,
+    endereco: document.getElementById('obra_endereco').value, razao_social: document.getElementById('obra_razao').value,
+    cnpj: document.getElementById('obra_cnpj').value, comprador: document.getElementById('obra_comprador').value,
+    forma_pagamento: document.getElementById('obra_pagamento').value, prazo_entrega: document.getElementById('obra_prazo').value,
+  };
+  const resultado = editandoObraCod
+    ? await supabase.from('obras').update(dados).eq('codigo', editandoObraCod)
+    : await supabase.from('obras').insert(dados);
+  if (resultado.error) { toast('Erro: ' + resultado.error.message, 'var(--rust)'); return; }
+  await registrarLog(editandoObraCod ? `Obra atualizada: ${nome}` : `Obra cadastrada: ${nome}`);
+  closeModal('obraModal');
+  await carregarObras();
+  toast(editandoObraCod ? '✔ Atualizada!' : '✔ Cadastrada!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirObra(codigo) {
+  askConfirm('Excluir esta obra?', async () => {
+    const { error } = await supabase.from('obras').delete().eq('codigo', codigo);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarObras();
+    toast('🗑 Obra excluída.');
+  }, 'Excluir Obra');
+}
+
+// ============================================================
+// MÓDULO: FORNECEDORES
+// ============================================================
+let fornecedores = [];
+let editandoFornCod = null;
+
+async function carregarFornecedores() {
+  const { data, error } = await supabase.from('fornecedores').select('*').order('razao_social');
+  if (error) return;
+  fornecedores = data || [];
+  renderFornecedores();
+}
+
+function renderFornecedores() {
+  const q = (document.getElementById('fornSearch')?.value || '').toLowerCase();
+  const list = fornecedores.filter(f => !q || f.razao_social.toLowerCase().includes(q));
+  document.getElementById('fornecedoresTable').innerHTML = list.map(f => `<tr>
+      <td>${f.razao_social}</td><td>${f.cnpj || '—'}</td><td>${f.contato || '—'}</td><td>${f.telefone || '—'}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarFornecedor('${f.codigo}')">Editar</button>
+        <button class="btn small danger" onclick="excluirFornecedor('${f.codigo}')">Excluir</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="5" class="empty">Nenhum fornecedor cadastrado.</td></tr>`;
+}
+
+function novoFornecedor() {
+  editandoFornCod = null;
+  document.getElementById('fornModalTitle').textContent = 'Novo Fornecedor';
+  document.getElementById('fornSaveBtn').textContent = 'Cadastrar';
+  ['forn_razao', 'forn_cnpj', 'forn_cep', 'forn_endereco', 'forn_contato', 'forn_tel', 'forn_email'].forEach(id => document.getElementById(id).value = '');
+  openModal('fornecedorModal');
+}
+
+function editarFornecedor(codigo) {
+  const f = fornecedores.find(x => x.codigo === codigo);
+  if (!f) return;
+  editandoFornCod = codigo;
+  document.getElementById('fornModalTitle').textContent = 'Editar Fornecedor';
+  document.getElementById('fornSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('forn_razao').value = f.razao_social || '';
+  document.getElementById('forn_cnpj').value = f.cnpj || '';
+  document.getElementById('forn_cep').value = f.cep || '';
+  document.getElementById('forn_endereco').value = f.endereco || '';
+  document.getElementById('forn_contato').value = f.contato || '';
+  document.getElementById('forn_tel').value = f.telefone || '';
+  document.getElementById('forn_email').value = f.email || '';
+  openModal('fornecedorModal');
+}
+
+async function salvarFornecedor() {
+  const razao_social = document.getElementById('forn_razao').value.trim();
+  if (!razao_social) { toast('Preencha a razão social!', 'var(--rust)'); return; }
+  const dados = {
+    razao_social, cnpj: document.getElementById('forn_cnpj').value, cep: document.getElementById('forn_cep').value,
+    endereco: document.getElementById('forn_endereco').value, contato: document.getElementById('forn_contato').value,
+    telefone: document.getElementById('forn_tel').value, email: document.getElementById('forn_email').value,
+  };
+  let resultado;
+  if (editandoFornCod) {
+    resultado = await supabase.from('fornecedores').update(dados).eq('codigo', editandoFornCod);
+  } else {
+    dados.codigo = `FOR-${Date.now().toString().slice(-6)}`;
+    resultado = await supabase.from('fornecedores').insert(dados);
+  }
+  if (resultado.error) { toast('Erro: ' + resultado.error.message, 'var(--rust)'); return; }
+  await registrarLog(editandoFornCod ? `Fornecedor atualizado: ${razao_social}` : `Fornecedor cadastrado: ${razao_social}`);
+  closeModal('fornecedorModal');
+  await carregarFornecedores();
+  toast(editandoFornCod ? '✔ Atualizado!' : '✔ Cadastrado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirFornecedor(codigo) {
+  askConfirm('Excluir este fornecedor?', async () => {
+    const { error } = await supabase.from('fornecedores').delete().eq('codigo', codigo);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarFornecedores();
+    toast('🗑 Fornecedor excluído.');
+  }, 'Excluir Fornecedor');
+}
+
+// ============================================================
+// MÓDULO: REFEIÇÕES
+// ============================================================
+let refeicoes = [];
+
+async function carregarRefeicoes() {
+  const { data, error } = await supabase.from('refeicoes').select('*').order('data', { ascending: false });
+  if (error) return;
+  refeicoes = data || [];
+  renderRefeicoes();
+}
+
+function toggleObraRef() {
+  document.getElementById('ref_obraWrap').style.display = document.getElementById('ref_local').value === 'Obra' ? 'block' : 'none';
+}
+
+function renderRefeicoes() {
+  document.getElementById('refeicoesTable').innerHTML = refeicoes.map(r => `<tr>
+      <td>${r.data}</td><td>${r.local_tipo === 'Obra' ? 'Obra: ' + (r.obra_nome || '—') : 'Fábrica'}</td>
+      <td><span class="badge badge-ok">${r.tipo}</span></td><td>${r.quantidade}</td><td>${r.responsavel || '—'}</td>
+      <td><button class="btn small danger" onclick="excluirRefeicao('${r.id}')">Excluir</button></td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">Nenhum registro ainda.</td></tr>`;
+
+  const totalCafe = refeicoes.filter(r => r.tipo === 'Café da Manhã').reduce((s, r) => s + r.quantidade, 0);
+  const totalAlmoco = refeicoes.filter(r => r.tipo === 'Almoço').reduce((s, r) => s + r.quantidade, 0);
+  const totalLanche = refeicoes.filter(r => r.tipo === 'Lanche').reduce((s, r) => s + r.quantidade, 0);
+  document.getElementById('kpiRefeicoes').innerHTML = [
+    { label: 'Café da Manhã', val: totalCafe, color: 'var(--amber)' },
+    { label: 'Almoço', val: totalAlmoco, color: 'var(--green)' },
+    { label: 'Lanche', val: totalLanche, color: 'var(--accent)' },
+  ].map(k => `<div class="kpi" style="--kpi-color:${k.color}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">cartões</div></div>`).join('');
+}
+
+function novaRefeicao() {
+  document.getElementById('ref_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ref_local').value = 'Fábrica';
+  document.getElementById('ref_obra').value = '';
+  document.getElementById('ref_qtd').value = 1;
+  document.getElementById('ref_resp').value = '';
+  toggleObraRef();
+  openModal('refeicaoModal');
+}
+
+async function salvarRefeicao() {
+  const dados = {
+    data: document.getElementById('ref_data').value, local_tipo: document.getElementById('ref_local').value,
+    obra_nome: document.getElementById('ref_obra').value, tipo: document.getElementById('ref_tipo').value,
+    quantidade: +document.getElementById('ref_qtd').value || 1, responsavel: document.getElementById('ref_resp').value,
+  };
+  const { error } = await supabase.from('refeicoes').insert(dados);
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+  await registrarLog(`Refeição registrada: ${dados.tipo} (${dados.quantidade}x)`);
+  closeModal('refeicaoModal');
+  await carregarRefeicoes();
+  toast('✔ Registro adicionado!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirRefeicao(id) {
+  askConfirm('Excluir este registro?', async () => {
+    const { error } = await supabase.from('refeicoes').delete().eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarRefeicoes();
+    toast('🗑 Excluído.');
+  }, 'Excluir Registro');
+}
+
+// ============================================================
+// MÓDULO: TRANSFERÊNCIA DE MATERIAL
+// ============================================================
+let transferencias = [];
+let trfItensTemp = [];
+
+async function carregarTransferencias() {
+  const { data, error } = await supabase.from('transferencias').select('*').order('data', { ascending: false });
+  if (error) return;
+  transferencias = data || [];
+  renderTransferencias();
+}
+
+function renderTransferencias() {
+  document.getElementById('transferenciasTable').innerHTML = transferencias.map(t => `<tr>
+      <td>${t.data}</td><td>${t.origem || '—'}</td><td>${t.destino || '—'}</td>
+      <td>${(t.itens || []).map(i => i.desc).join(', ') || '—'}</td>
+      <td>${t.anexo_url ? `<a href="${t.anexo_url}" target="_blank">📎 Ver</a>` : '—'}</td>
+      <td><button class="btn small danger" onclick="excluirTransferencia('${t.id}')">Excluir</button></td>
+    </tr>`).join('') || `<tr><td colspan="6" class="empty">Nenhuma transferência registrada.</td></tr>`;
+}
+
+function novaTransferencia() {
+  trfItensTemp = [];
+  ['trf_serie', 'trf_origem', 'trf_destino', 'trf_transp', 'trf_placa', 'trf_respSaida', 'trf_respReceb'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('trf_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('trf_anexo').value = '';
+  renderTrfItensPreview();
+  openModal('transferenciaModal');
+}
+
+function addItemTransferencia() {
+  const desc = document.getElementById('trf_item_desc').value.trim();
+  const qtd = +document.getElementById('trf_item_qtd').value || 0;
+  const un = document.getElementById('trf_item_un').value.trim();
+  if (!desc || qtd <= 0) { toast('Informe descrição e quantidade!', 'var(--rust)'); return; }
+  trfItensTemp.push({ desc, qtd, un });
+  document.getElementById('trf_item_desc').value = '';
+  document.getElementById('trf_item_qtd').value = 1;
+  document.getElementById('trf_item_un').value = '';
+  renderTrfItensPreview();
+}
+
+function removerItemTransferencia(idx) { trfItensTemp.splice(idx, 1); renderTrfItensPreview(); }
+
+function renderTrfItensPreview() {
+  document.getElementById('trfItensPreview').innerHTML = trfItensTemp.length
+    ? trfItensTemp.map((it, idx) => `<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:4px;margin-bottom:4px;font-size:13px"><span>${it.desc} — ${it.qtd}${it.un ? ' ' + it.un : ''}</span><button class="btn small danger" onclick="removerItemTransferencia(${idx})">Remover</button></div>`).join('')
+    : `<div class="empty" style="padding:6px 0">Nenhum item adicionado</div>`;
+}
+
+async function salvarTransferencia() {
+  const origem = document.getElementById('trf_origem').value.trim();
+  const destino = document.getElementById('trf_destino').value.trim();
+  if (!origem || !destino) { toast('Preencha origem e destino!', 'var(--rust)'); return; }
+  if (!trfItensTemp.length) { toast('Adicione ao menos um item!', 'var(--rust)'); return; }
+
+  let anexoUrl = null;
+  const arquivo = document.getElementById('trf_anexo').files[0];
+  if (arquivo) {
+    const nomeArquivo = `${Date.now()}_${arquivo.name}`;
+    const { data: upload, error: erroUpload } = await supabase.storage.from('anexos-transferencia').upload(nomeArquivo, arquivo);
+    if (erroUpload) { toast('Erro ao enviar anexo: ' + erroUpload.message, 'var(--rust)'); return; }
+    const { data: urlData } = supabase.storage.from('anexos-transferencia').getPublicUrl(nomeArquivo);
+    anexoUrl = urlData?.publicUrl || null;
+  }
+
+  const { error } = await supabase.from('transferencias').insert({
+    numero_serie: document.getElementById('trf_serie').value, data: document.getElementById('trf_data').value,
+    origem, destino, transportadora: document.getElementById('trf_transp').value, placa: document.getElementById('trf_placa').value,
+    itens: trfItensTemp, responsavel_saida: document.getElementById('trf_respSaida').value,
+    responsavel_recebimento: document.getElementById('trf_respReceb').value, anexo_url: anexoUrl,
+  });
+  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+
+  await registrarLog(`Transferência registrada: ${origem} → ${destino}`);
+  closeModal('transferenciaModal');
+  await carregarTransferencias();
+  toast('✔ Transferência registrada!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirTransferencia(id) {
+  askConfirm('Excluir este registro de transferência?', async () => {
+    const { error } = await supabase.from('transferencias').delete().eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await carregarTransferencias();
+    toast('🗑 Excluído.');
+  }, 'Excluir Transferência');
+}
+
+// ============================================================
+// MÓDULO: RELATÓRIOS
+// ============================================================
+let chartValorInst, chartObraInst;
+
+function renderRelatorios() {
+  if (typeof Chart === 'undefined') return;
+  const periodo = document.getElementById('relPeriodo')?.value || 'todos';
+  let list = [];
+  supabase.from('saidas').select('*').then(({ data }) => {
+    list = data || [];
+    if (periodo !== 'todos') {
+      const limite = new Date();
+      limite.setDate(limite.getDate() - (+periodo));
+      list = list.filter(s => new Date(s.data + 'T12:00:00') >= limite);
+    }
+    montarRelatorios(list);
+  });
+}
+
+function montarRelatorios(list) {
+  const porItem = {};
+  list.forEach(s => {
+    if (!porItem[s.item_codigo]) porItem[s.item_codigo] = { cod: s.item_codigo, desc: s.descricao, qtd: 0, valor: 0 };
+    porItem[s.item_codigo].qtd += s.quantidade;
+    const item = itens.find(i => i.codigo === s.item_codigo);
+    porItem[s.item_codigo].valor += s.quantidade * (item?.custo || 0);
+  });
+  const agItens = Object.values(porItem).sort((a, b) => b.valor - a.valor).slice(0, 10);
+  const totalValor = agItens.reduce((s, a) => s + a.valor, 0);
+
+  const porObra = {};
+  list.forEach(s => { const key = s.obra || 'Sem obra'; porObra[key] = (porObra[key] || 0) + s.quantidade * (itens.find(i => i.codigo === s.item_codigo)?.custo || 0); });
+  const obraEntries = Object.entries(porObra).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+  document.getElementById('kpiRelatorios').innerHTML = [
+    { label: 'Total Consumido', val: `R$ ${fmt(totalValor)}`, color: 'var(--accent)' },
+    { label: 'Saídas no Período', val: list.length, color: 'var(--steel-light)' },
+  ].map(k => `<div class="kpi" style="--kpi-color:${k.color}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div></div>`).join('');
+
+  if (chartValorInst) chartValorInst.destroy();
+  chartValorInst = new Chart(document.getElementById('chartValor'), {
+    type: 'bar',
+    data: { labels: agItens.map(a => a.cod), datasets: [{ label: 'Valor (R$)', data: agItens.map(a => +a.valor.toFixed(2)), backgroundColor: '#c8102e', borderRadius: 3 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+
+  if (chartObraInst) chartObraInst.destroy();
+  chartObraInst = new Chart(document.getElementById('chartObra'), {
+    type: 'bar',
+    data: { labels: obraEntries.map(e => e[0]), datasets: [{ label: 'Valor (R$)', data: obraEntries.map(e => +e[1].toFixed(2)), backgroundColor: '#8a8a90', borderRadius: 3 }] },
+    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+  });
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  const criticos = itens.filter(i => i.quantidade < i.minimo);
+  const valorTotal = itens.reduce((s, i) => s + i.quantidade * i.custo, 0);
+
+  document.getElementById('kpiGrid').innerHTML = [
+    { label: 'Total de Itens', val: itens.length, sub: 'cadastrados', color: 'var(--accent)' },
+    { label: 'Estoque Crítico', val: criticos.length, sub: 'abaixo do mínimo', color: 'var(--rust)' },
+    { label: 'Valor em Estoque', val: `R$ ${fmt(valorTotal)}`, sub: 'valor total', color: 'var(--steel-light)' },
+  ].map(k => `<div class="kpi" style="--kpi-color:${k.color}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.val}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
+}
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+// (chamado por iniciarSupabaseClient() lá em cima, assim que a lib carrega)
+</script>
+</body>
+</html>
