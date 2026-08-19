@@ -129,6 +129,7 @@
   <nav>
     <button onclick="showTab('dashboard')" class="active" id="navBtn-dashboard">📊 Dashboard</button>
     <button onclick="showTab('estoque')" id="navBtn-estoque">📦 Estoque</button>
+    <button onclick="showTab('categorias')" id="navBtn-categorias">🏷️ Categorias</button>
     <button onclick="showTab('perfis')" id="navBtn-perfis">📏 Perfis</button>
     <button onclick="showTab('entradas')" id="navBtn-entradas">📥 Entradas</button>
     <button onclick="showTab('saidas')" id="navBtn-saidas">📤 Saídas</button>
@@ -166,6 +167,23 @@
             <th>Mín.</th><th>Estoque</th><th>Status</th><th>Valor (R$)</th><th>Ação</th>
           </tr></thead>
           <tbody id="estoqueTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== CATEGORIAS ===== -->
+    <div id="tab-categorias" class="tab-panel">
+      <div class="section-header">
+        <div class="section-title">Categorias de Itens</div>
+        <div class="controls">
+          <input type="text" id="categoriaSearch" placeholder="Buscar categoria..." oninput="renderCategorias()">
+          <button class="btn" onclick="novaCategoria()">+ Nova Categoria</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Descrição</th><th>Itens cadastrados</th><th>Ação</th></tr></thead>
+          <tbody id="categoriasTable"></tbody>
         </table>
       </div>
     </div>
@@ -388,8 +406,10 @@
         <div class="form-group"><label>Código</label><input id="item_cod" placeholder="COD-001"></div>
         <div class="form-group">
           <label>Categoria</label>
-          <input id="item_cat" list="catList" placeholder="Ex: Ferragem" oninput="toggleEpiFields()">
-          <datalist id="catList"></datalist>
+          <div style="display:flex;gap:6px">
+            <select id="item_cat" onchange="toggleEpiFields()" style="flex:1"><option value="">Selecione...</option></select>
+            <button type="button" class="btn small" style="white-space:nowrap" onclick="novaCategoria(true)">+ Nova</button>
+          </div>
         </div>
         <div class="form-group full"><label>Descrição</label><input id="item_desc" placeholder="Descrição do item"></div>
         <div class="form-group"><label>Unidade</label><input id="item_un" placeholder="UN, KG, M..."></div>
@@ -417,6 +437,26 @@
     <div class="modal-footer">
       <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('itemModal')">Cancelar</button>
       <button class="btn" id="itemSaveBtn" onclick="salvarItem()">Cadastrar Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Categoria Modal -->
+<div class="modal-bg" id="categoriaModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="categoriaModalTitle">Nova Categoria</div>
+      <button class="modal-close" onclick="fecharCategoriaModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Nome</label><input id="cat_nome" placeholder="Ex: Ferragem, Vidro, EPI..."></div>
+        <div class="form-group full"><label>Descrição (opcional)</label><input id="cat_desc" placeholder="Ex: Parafusos, dobradiças, roldanas"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="fecharCategoriaModal()">Cancelar</button>
+      <button class="btn" id="categoriaSaveBtn" onclick="salvarCategoria()">Cadastrar</button>
     </div>
   </div>
 </div>
@@ -835,6 +875,7 @@ async function fazerLogout() {
 async function entrarNoApp() {
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
+  await carregarCategorias();
   await carregarItens();
   await carregarPerfis();
   await carregarEntradas();
@@ -987,29 +1028,151 @@ function renderEstoque() {
 }
 
 function toggleEpiFields(fromCheckbox) {
-  const catInput = document.getElementById('item_cat');
+  const catSelect = document.getElementById('item_cat');
   const chk = document.getElementById('item_is_epi');
   if (fromCheckbox) {
-    if (chk.checked) { catInput.value = 'EPI'; }
-    else if (catInput.value.trim().toLowerCase() === 'epi') { catInput.value = ''; }
+    if (chk.checked) {
+      const opcaoEpi = Array.from(catSelect.options).find(o => o.value.toLowerCase() === 'epi');
+      if (opcaoEpi) {
+        catSelect.value = opcaoEpi.value;
+      } else {
+        toast('Cadastre primeiro a categoria "EPI" na aba Categorias (ou pelo botão "+ Nova" ao lado).', 'var(--rust)');
+        chk.checked = false;
+        return;
+      }
+    } else if (catSelect.value.trim().toLowerCase() === 'epi') {
+      catSelect.value = '';
+    }
   } else {
-    chk.checked = catInput.value.trim().toLowerCase() === 'epi';
+    chk.checked = catSelect.value.trim().toLowerCase() === 'epi';
   }
-  const isEpi = chk.checked || catInput.value.trim().toLowerCase() === 'epi';
+  const isEpi = chk.checked || catSelect.value.trim().toLowerCase() === 'epi';
   document.getElementById('epiFieldsWrap').style.display = isEpi ? 'block' : 'none';
 }
 
 function popularCategorias() {
-  const cats = [...new Set(itens.map(i => i.categoria).filter(Boolean))];
-  if (!cats.some(c => c.toLowerCase() === 'epi')) cats.push('EPI');
-  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${c}"></option>`).join('');
+  const sel = document.getElementById('item_cat');
+  if (!sel) return;
+  const atual = sel.value;
+  const opts = ['<option value="">Selecione...</option>'].concat(
+    categorias.map(c => `<option value="${c.nome}">${c.nome}</option>`)
+  );
+  sel.innerHTML = opts.join('');
+  if (atual) sel.value = atual;
+}
+
+function garantirOpcaoCategoria(nome) {
+  // Usado apenas para exibir, no select, uma categoria legada de um item já salvo
+  // que não existe mais na tabela "categorias" (não deve ser usado ao salvar).
+  const sel = document.getElementById('item_cat');
+  if (!sel || !nome) return;
+  const existe = Array.from(sel.options).some(o => o.value.toLowerCase() === nome.toLowerCase());
+  if (!existe) sel.insertAdjacentHTML('beforeend', `<option value="${nome}">${nome} (categoria não cadastrada)</option>`);
+}
+
+// ============================================================
+// MÓDULO: CATEGORIAS DE ITENS
+// ============================================================
+let categorias = [];
+let editandoCategoriaId = null;
+let categoriaOrigemRapida = false;
+
+async function carregarCategorias() {
+  const { data, error } = await supabase.from('categorias').select('*').order('nome');
+  if (error) return;
+  categorias = data || [];
+  renderCategorias();
+  popularCategorias();
+}
+
+function renderCategorias() {
+  const q = (document.getElementById('categoriaSearch')?.value || '').toLowerCase();
+  const list = categorias.filter(c => !q || c.nome.toLowerCase().includes(q));
+  document.getElementById('categoriasTable').innerHTML = list.map(c => {
+    const qtdItens = itens.filter(i => (i.categoria || '').toLowerCase() === c.nome.toLowerCase()).length;
+    return `<tr>
+      <td><strong>${c.nome}</strong></td><td>${c.descricao || '—'}</td><td>${qtdItens}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn small" onclick="editarCategoria('${c.id}')">Editar</button>
+        <button class="btn small danger" onclick="excluirCategoria('${c.id}')">Excluir</button>
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="4" class="empty">Nenhuma categoria cadastrada ainda.</td></tr>`;
+}
+
+function novaCategoria(origemRapida) {
+  editandoCategoriaId = null;
+  categoriaOrigemRapida = !!origemRapida;
+  document.getElementById('categoriaModalTitle').textContent = 'Nova Categoria';
+  document.getElementById('categoriaSaveBtn').textContent = 'Cadastrar';
+  document.getElementById('cat_nome').value = '';
+  document.getElementById('cat_desc').value = '';
+  openModal('categoriaModal');
+}
+
+function editarCategoria(id) {
+  const c = categorias.find(x => String(x.id) === String(id));
+  if (!c) return;
+  editandoCategoriaId = id;
+  categoriaOrigemRapida = false;
+  document.getElementById('categoriaModalTitle').textContent = 'Editar Categoria';
+  document.getElementById('categoriaSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('cat_nome').value = c.nome;
+  document.getElementById('cat_desc').value = c.descricao || '';
+  openModal('categoriaModal');
+}
+
+function fecharCategoriaModal() { closeModal('categoriaModal'); }
+
+async function salvarCategoria() {
+  const nome = document.getElementById('cat_nome').value.trim();
+  if (!nome) { toast('Informe o nome da categoria!', 'var(--rust)'); return; }
+
+  const duplicada = categorias.some(c => c.nome.toLowerCase() === nome.toLowerCase() && String(c.id) !== String(editandoCategoriaId));
+  if (duplicada) { toast('Já existe uma categoria com esse nome!', 'var(--rust)'); return; }
+
+  const dados = { nome, descricao: document.getElementById('cat_desc').value };
+
+  let resultado;
+  if (editandoCategoriaId) {
+    resultado = await supabase.from('categorias').update(dados).eq('id', editandoCategoriaId);
+  } else {
+    resultado = await supabase.from('categorias').insert(dados);
+  }
+  if (resultado.error) { toast('Erro ao salvar: ' + resultado.error.message, 'var(--rust)'); return; }
+
+  await registrarLog(editandoCategoriaId ? `Categoria atualizada: ${nome}` : `Categoria cadastrada: ${nome}`);
+  closeModal('categoriaModal');
+  await carregarCategorias();
+  if (categoriaOrigemRapida) { document.getElementById('item_cat').value = nome; toggleEpiFields(); }
+  toast(editandoCategoriaId ? '✔ Categoria atualizada!' : '✔ Categoria cadastrada!');
+  statusSalvando('💾 Salvo no Supabase');
+}
+
+function excluirCategoria(id) {
+  const c = categorias.find(x => String(x.id) === String(id));
+  if (!c) return;
+  const qtdItens = itens.filter(i => (i.categoria || '').toLowerCase() === c.nome.toLowerCase()).length;
+  if (qtdItens > 0) {
+    toast(`Não é possível excluir: ${qtdItens} item(ns) usam a categoria "${c.nome}". Reclassifique-os antes.`, 'var(--rust)');
+    return;
+  }
+  askConfirm(`Excluir a categoria "${c.nome}"?`, async () => {
+    const { error } = await supabase.from('categorias').delete().eq('id', id);
+    if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+    await registrarLog(`Categoria excluída: ${c.nome}`);
+    await carregarCategorias();
+    toast('🗑 Categoria excluída.');
+  }, 'Excluir Categoria');
 }
 
 function novoItem() {
   editandoItemCod = null;
   document.getElementById('itemModalTitle').textContent = 'Novo Item';
   document.getElementById('itemSaveBtn').textContent = 'Cadastrar Item';
-  ['item_cod','item_cat','item_desc','item_un','item_loc','item_ca','item_tamanho'].forEach(id => document.getElementById(id).value = '');
+  popularCategorias();
+  ['item_cod','item_desc','item_un','item_loc','item_ca','item_tamanho'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('item_cat').value = '';
   document.getElementById('item_cod').disabled = false;
   document.getElementById('item_min').value = 0;
   document.getElementById('item_qtd').value = 0;
@@ -1018,7 +1181,6 @@ function novoItem() {
   document.getElementById('item_val_uso').value = 365;
   document.getElementById('item_is_epi').checked = false;
   document.getElementById('epiFieldsWrap').style.display = 'none';
-  popularCategorias();
   openModal('itemModal');
 }
 
@@ -1030,6 +1192,8 @@ function editarItem(codigo) {
   document.getElementById('itemSaveBtn').textContent = 'Salvar Alterações';
   document.getElementById('item_cod').value = i.codigo;
   document.getElementById('item_cod').disabled = true;
+  popularCategorias();
+  if (i.categoria) garantirOpcaoCategoria(i.categoria);
   document.getElementById('item_cat').value = i.categoria || '';
   document.getElementById('item_desc').value = i.descricao || '';
   document.getElementById('item_un').value = i.unidade || '';
@@ -1041,7 +1205,6 @@ function editarItem(codigo) {
   document.getElementById('item_val_ca').value = i.validade_ca || '';
   document.getElementById('item_tamanho').value = i.tamanho || '';
   document.getElementById('item_val_uso').value = i.validade_uso_dias || 365;
-  popularCategorias();
   toggleEpiFields();
   openModal('itemModal');
 }
