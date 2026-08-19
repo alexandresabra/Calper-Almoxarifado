@@ -87,6 +87,16 @@
   .login-box button { width: 100%; padding: 11px; margin-top: 6px; }
   #loginErro { color: var(--rust); font-size: 12px; margin-top: 10px; min-height: 16px; }
   #saveStatus { font-size: 11px; color: #8b8b90; margin-left: auto; }
+  .ac-wrap { position: relative; }
+  .ac-wrap input { width: 100%; }
+  .ac-list { position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; max-height: 240px; overflow: auto; z-index: 100; box-shadow: 0 6px 18px rgba(0,0,0,.14); display: none; }
+  .ac-list.open { display: block; }
+  .ac-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover { background: var(--card2); }
+  .ac-sub { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+  .ac-empty { padding: 10px 12px; font-size: 12px; color: var(--text-muted); }
+  .info-chip { background: var(--card2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--text-dim); margin-top: 4px; display: none; }
 </style>
 </head>
 <body>
@@ -185,7 +195,7 @@
       <div class="section-header">
         <div class="section-title">Entradas de Material</div>
         <div class="controls">
-          <button class="btn" onclick="openModal('entradaModal')">+ Registrar Entrada</button>
+          <button class="btn" onclick="abrirEntrada()">+ Registrar Entrada</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -203,7 +213,7 @@
       <div class="section-header">
         <div class="section-title">Saídas de Material</div>
         <div class="controls">
-          <button class="btn" onclick="openModal('saidaModal')">+ Registrar Saída</button>
+          <button class="btn" onclick="abrirSaida()">+ Registrar Saída</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -376,13 +386,32 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Código</label><input id="item_cod" placeholder="COD-001"></div>
-        <div class="form-group"><label>Categoria</label><input id="item_cat" placeholder="Ex: Ferragem"></div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <input id="item_cat" list="catList" placeholder="Ex: Ferragem" oninput="toggleEpiFields()">
+          <datalist id="catList"></datalist>
+        </div>
         <div class="form-group full"><label>Descrição</label><input id="item_desc" placeholder="Descrição do item"></div>
         <div class="form-group"><label>Unidade</label><input id="item_un" placeholder="UN, KG, M..."></div>
         <div class="form-group"><label>Mínimo</label><input id="item_min" type="number" min="0" value="0"></div>
         <div class="form-group"><label>Estoque Atual</label><input id="item_qtd" type="number" min="0" value="0"></div>
         <div class="form-group"><label>Custo Unit. (R$)</label><input id="item_custo" type="number" step="0.01" min="0" value="0"></div>
         <div class="form-group"><label>Localização</label><input id="item_loc" placeholder="Ex: Rack A1"></div>
+        <div class="form-group full" style="padding:2px 0">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;text-transform:none;font-size:12px">
+            <input type="checkbox" id="item_is_epi" onchange="toggleEpiFields(true)" style="width:auto">
+            🦺 Este item é um EPI (Equipamento de Proteção Individual)
+          </label>
+        </div>
+      </div>
+      <div id="epiFieldsWrap" style="display:none;border-top:1px dashed var(--border);margin-top:10px;padding-top:12px">
+        <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Dados específicos do EPI</label>
+        <div class="form-grid" style="margin-top:8px">
+          <div class="form-group"><label>Nº do CA (Certificado de Aprovação)</label><input id="item_ca" placeholder="Ex: 12345"></div>
+          <div class="form-group"><label>Validade do CA</label><input id="item_val_ca" type="date"></div>
+          <div class="form-group"><label>Tamanho / Numeração</label><input id="item_tamanho" placeholder="Ex: 42, G, Único"></div>
+          <div class="form-group"><label>Validade de Uso (dias)</label><input id="item_val_uso" type="number" min="1" value="365" placeholder="Ex: 365"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -430,8 +459,11 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Data</label><input id="ent_data" type="date"></div>
-        <div class="form-group full"><label>Item</label>
-          <select id="ent_item" onchange="autoFillEntrada()"></select>
+        <div class="form-group full ac-wrap"><label>Item / Produto</label>
+          <input id="ent_item_busca" placeholder="Digite código ou descrição para buscar..." autocomplete="off">
+          <input type="hidden" id="ent_item">
+          <div class="ac-list" id="ent_item_list"></div>
+          <div class="info-chip" id="ent_item_info"></div>
         </div>
         <div class="form-group"><label>Quantidade</label><input id="ent_qtd" type="number" min="1" value="1"></div>
         <div class="form-group"><label>Custo Unit. (R$)</label><input id="ent_custo" type="number" step="0.01"></div>
@@ -457,13 +489,19 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Data</label><input id="sai_data" type="date"></div>
-        <div class="form-group full"><label>Item</label>
-          <select id="sai_item"></select>
+        <div class="form-group full ac-wrap"><label>Item / Produto</label>
+          <input id="sai_item_busca" placeholder="Digite código ou descrição para buscar..." autocomplete="off">
+          <input type="hidden" id="sai_item">
+          <div class="ac-list" id="sai_item_list"></div>
+          <div class="info-chip" id="sai_item_info"></div>
         </div>
         <div class="form-group"><label>Quantidade</label><input id="sai_qtd" type="number" min="1" value="1"></div>
         <div class="form-group"><label>Obra</label><input id="sai_obra" placeholder="Nome da obra/projeto"></div>
         <div class="form-group"><label>Nº OS</label><input id="sai_os" placeholder="OS-XXXX"></div>
-        <div class="form-group"><label>Responsável</label><input id="sai_resp" placeholder="Nome do responsável"></div>
+        <div class="form-group full ac-wrap"><label>Responsável</label>
+          <input id="sai_resp" placeholder="Nome do responsável" autocomplete="off">
+          <div class="ac-list" id="sai_resp_list"></div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -548,20 +586,28 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label>Funcionário</label><input id="epi_func" placeholder="Nome completo"></div>
+        <div class="form-group full ac-wrap"><label>Funcionário</label>
+          <input id="epi_func" placeholder="Digite nome ou matrícula para buscar..." autocomplete="off">
+          <div class="ac-list" id="epi_func_list"></div>
+        </div>
         <div class="form-group"><label>Matrícula</label><input id="epi_mat" placeholder="Opcional"></div>
         <div class="form-group"><label>Função</label><input id="epi_funcao" placeholder="Opcional"></div>
         <div class="form-group"><label>Data de Entrega</label><input id="epi_data" type="date"></div>
       </div>
       <div style="border-top:1px solid var(--border);margin:16px 0"></div>
-      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens de EPI</label>
+      <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens de EPI (baixa automática no estoque)</label>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0">
-        <input id="epi_item_nome" placeholder="EPI (ex: Luva)">
+        <div class="ac-wrap" style="grid-column:span 2">
+          <input id="epi_item_nome" placeholder="Buscar EPI cadastrado no estoque..." autocomplete="off">
+          <input type="hidden" id="epi_item_cod">
+          <div class="ac-list" id="epi_item_list"></div>
+        </div>
         <input id="epi_item_ca" placeholder="Nº CA">
         <input id="epi_item_qtd" type="number" min="1" value="1" placeholder="Qtd">
         <input id="epi_item_val" type="number" min="1" value="365" placeholder="Validade (dias)">
         <button type="button" class="btn small" onclick="addItemEpi()" style="grid-column:1/-1">+ Adicionar Item</button>
       </div>
+      <div class="info-chip" id="epi_item_info" style="margin-bottom:8px"></div>
       <div id="epiItensPreview" style="margin-bottom:10px"></div>
     </div>
     <div class="modal-footer">
@@ -680,7 +726,7 @@
 <div class="modal-bg" id="transferenciaModal">
   <div class="modal" style="max-width:640px">
     <div class="modal-header">
-      <div class="modal-title">Nova Transferência de Material</div>
+      <div class="modal-title" id="trfModalTitle">Nova Transferência de Material</div>
       <button class="modal-close" onclick="closeModal('transferenciaModal')">✕</button>
     </div>
     <div class="modal-body">
@@ -694,16 +740,25 @@
       </div>
       <div style="border-top:1px solid var(--border);margin:16px 0"></div>
       <label style="font-size:11px;color:var(--text-dim);text-transform:uppercase">Itens</label>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0">
-        <input id="trf_item_desc" placeholder="Descrição">
+      <div class="ac-wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:8px 0">
+        <div class="ac-wrap">
+          <input id="trf_item_desc" placeholder="Descrição (busque no estoque ou digite)" autocomplete="off">
+          <div class="ac-list" id="trf_item_list"></div>
+        </div>
         <input id="trf_item_qtd" type="number" min="1" value="1" placeholder="Qtd">
         <input id="trf_item_un" placeholder="Unidade">
         <button type="button" class="btn small" onclick="addItemTransferencia()" style="grid-column:1/-1">+ Adicionar Item</button>
       </div>
       <div id="trfItensPreview" style="margin-bottom:12px"></div>
       <div class="form-grid">
-        <div class="form-group"><label>Resp. Saída</label><input id="trf_respSaida" placeholder="Nome"></div>
-        <div class="form-group"><label>Resp. Recebimento</label><input id="trf_respReceb" placeholder="Nome"></div>
+        <div class="form-group ac-wrap"><label>Resp. Saída</label>
+          <input id="trf_respSaida" placeholder="Nome" autocomplete="off">
+          <div class="ac-list" id="trf_respSaida_list"></div>
+        </div>
+        <div class="form-group ac-wrap"><label>Resp. Recebimento</label>
+          <input id="trf_respReceb" placeholder="Nome" autocomplete="off">
+          <div class="ac-list" id="trf_respReceb_list"></div>
+        </div>
         <div class="form-group full"><label>Anexo (foto/PDF do formulário assinado)</label>
           <input id="trf_anexo" type="file" accept="image/*,.pdf">
         </div>
@@ -711,7 +766,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" style="background:var(--card2);color:var(--text-dim)" onclick="closeModal('transferenciaModal')">Cancelar</button>
-      <button class="btn" onclick="salvarTransferencia()">Registrar</button>
+      <button class="btn" id="trfSaveBtn" onclick="salvarTransferencia()">Registrar</button>
     </div>
   </div>
 </div>
@@ -837,6 +892,53 @@ document.getElementById('confirmBtn').onclick = function () {
 };
 
 // ============================================================
+// COMPONENTE: BUSCA RÁPIDA (AUTOCOMPLETE)
+// ============================================================
+function initAutocomplete({ inputId, listId, hiddenId, getData, filterFn, renderItem, onSelect, minChars = 1 }) {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  if (!input || !list) return;
+
+  function abrir(itensEncontrados) {
+    if (!itensEncontrados.length) {
+      list.innerHTML = `<div class="ac-empty">Nenhum resultado encontrado</div>`;
+      list.classList.add('open');
+      return;
+    }
+    list.innerHTML = itensEncontrados.slice(0, 8).map((it, idx) => `<div class="ac-item" data-idx="${idx}">${renderItem(it)}</div>`).join('');
+    list.classList.add('open');
+    Array.from(list.children).forEach((el, idx) => {
+      el.onclick = () => { onSelect(itensEncontrados[idx]); fechar(); };
+    });
+  }
+  function fechar() { list.classList.remove('open'); list.innerHTML = ''; }
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if (hiddenId) { const h = document.getElementById(hiddenId); if (h) h.value = ''; }
+    if (q.length < minChars) { fechar(); return; }
+    abrir(filterFn(getData(), q));
+  });
+  input.addEventListener('focus', () => {
+    const q = input.value.trim().toLowerCase();
+    if (q.length >= minChars) abrir(filterFn(getData(), q));
+  });
+  document.addEventListener('click', (e) => {
+    if (e.target !== input && !list.contains(e.target)) fechar();
+  });
+}
+
+function filtrarItensCatalogo(lista, q, categoria) {
+  return lista
+    .filter(i => (!categoria || (i.categoria || '').toLowerCase() === categoria.toLowerCase()))
+    .filter(i => i.codigo.toLowerCase().includes(q) || i.descricao.toLowerCase().includes(q));
+}
+
+function filtrarFuncionariosLista(lista, q) {
+  return lista.filter(f => f.nome.toLowerCase().includes(q) || (f.matricula || '').toLowerCase().includes(q) || (f.funcao || '').toLowerCase().includes(q));
+}
+
+// ============================================================
 // MÓDULO: ITENS (Estoque) — CRUD completo via Supabase
 // ============================================================
 let itens = [];
@@ -861,8 +963,11 @@ function renderEstoque() {
   const list = itens.filter(i => !q || i.codigo.toLowerCase().includes(q) || i.descricao.toLowerCase().includes(q));
   document.getElementById('estoqueTable').innerHTML = list.map(i => {
     const s = estoqueStatus(i);
+    const isEpi = (i.categoria || '').toLowerCase() === 'epi';
     return `<tr>
-      <td><code>${i.codigo}</code></td><td>${i.descricao}</td><td>${i.categoria || '—'}</td><td>${i.unidade || '—'}</td>
+      <td><code>${i.codigo}</code></td><td>${i.descricao}</td>
+      <td>${isEpi ? '🦺 ' : ''}${i.categoria || '—'}${isEpi && i.ca ? ` <span style="color:var(--text-muted);font-size:11px">(CA ${i.ca})</span>` : ''}</td>
+      <td>${i.unidade || '—'}</td>
       <td>${i.minimo}</td><td><strong>${i.quantidade}</strong></td>
       <td><span class="badge ${s.cls}">${s.label}</span></td>
       <td>R$ ${fmt(i.quantidade * i.custo)}</td>
@@ -874,15 +979,39 @@ function renderEstoque() {
   }).join('') || `<tr><td colspan="9" class="empty">Nenhum item cadastrado ainda.</td></tr>`;
 }
 
+function toggleEpiFields(fromCheckbox) {
+  const catInput = document.getElementById('item_cat');
+  const chk = document.getElementById('item_is_epi');
+  if (fromCheckbox) {
+    if (chk.checked) { catInput.value = 'EPI'; }
+    else if (catInput.value.trim().toLowerCase() === 'epi') { catInput.value = ''; }
+  } else {
+    chk.checked = catInput.value.trim().toLowerCase() === 'epi';
+  }
+  const isEpi = chk.checked || catInput.value.trim().toLowerCase() === 'epi';
+  document.getElementById('epiFieldsWrap').style.display = isEpi ? 'block' : 'none';
+}
+
+function popularCategorias() {
+  const cats = [...new Set(itens.map(i => i.categoria).filter(Boolean))];
+  if (!cats.some(c => c.toLowerCase() === 'epi')) cats.push('EPI');
+  document.getElementById('catList').innerHTML = cats.map(c => `<option value="${c}"></option>`).join('');
+}
+
 function novoItem() {
   editandoItemCod = null;
   document.getElementById('itemModalTitle').textContent = 'Novo Item';
   document.getElementById('itemSaveBtn').textContent = 'Cadastrar Item';
-  ['item_cod','item_cat','item_desc','item_un','item_loc'].forEach(id => document.getElementById(id).value = '');
+  ['item_cod','item_cat','item_desc','item_un','item_loc','item_ca','item_tamanho'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('item_cod').disabled = false;
   document.getElementById('item_min').value = 0;
   document.getElementById('item_qtd').value = 0;
   document.getElementById('item_custo').value = 0;
+  document.getElementById('item_val_ca').value = '';
+  document.getElementById('item_val_uso').value = 365;
+  document.getElementById('item_is_epi').checked = false;
+  document.getElementById('epiFieldsWrap').style.display = 'none';
+  popularCategorias();
   openModal('itemModal');
 }
 
@@ -901,6 +1030,12 @@ function editarItem(codigo) {
   document.getElementById('item_qtd').value = i.quantidade || 0;
   document.getElementById('item_custo').value = i.custo || 0;
   document.getElementById('item_loc').value = i.localizacao || '';
+  document.getElementById('item_ca').value = i.ca || '';
+  document.getElementById('item_val_ca').value = i.validade_ca || '';
+  document.getElementById('item_tamanho').value = i.tamanho || '';
+  document.getElementById('item_val_uso').value = i.validade_uso_dias || 365;
+  popularCategorias();
+  toggleEpiFields();
   openModal('itemModal');
 }
 
@@ -909,6 +1044,7 @@ async function salvarItem() {
   const descricao = document.getElementById('item_desc').value.trim();
   if (!codigo || !descricao) { toast('Preencha código e descrição!', 'var(--rust)'); return; }
 
+  const isEpi = document.getElementById('item_is_epi').checked;
   const dados = {
     codigo,
     categoria: document.getElementById('item_cat').value,
@@ -918,6 +1054,10 @@ async function salvarItem() {
     quantidade: +document.getElementById('item_qtd').value || 0,
     custo: +document.getElementById('item_custo').value || 0,
     localizacao: document.getElementById('item_loc').value,
+    ca: isEpi ? document.getElementById('item_ca').value : null,
+    validade_ca: isEpi ? (document.getElementById('item_val_ca').value || null) : null,
+    tamanho: isEpi ? document.getElementById('item_tamanho').value : null,
+    validade_uso_dias: isEpi ? (+document.getElementById('item_val_uso').value || 365) : null,
   };
 
   let resultado;
@@ -1055,18 +1195,58 @@ function excluirPerfil(codigo) {
 // ============================================================
 // MÓDULO: ENTRADAS E SAÍDAS
 // ============================================================
+let _autocompleteEstoqueIniciado = false;
 function popularSelectItens() {
-  const opts = itens.map(i => `<option value="${i.codigo}">${i.codigo} — ${i.descricao}</option>`).join('');
-  const selEnt = document.getElementById('ent_item');
-  const selSai = document.getElementById('sai_item');
-  if (selEnt) selEnt.innerHTML = opts;
-  if (selSai) selSai.innerHTML = opts;
+  // Inicializa a busca rápida (autocomplete) de itens nas telas de Entrada e Saída (uma única vez)
+  if (_autocompleteEstoqueIniciado) return;
+  _autocompleteEstoqueIniciado = true;
+  initAutocomplete({
+    inputId: 'ent_item_busca', listId: 'ent_item_list', hiddenId: 'ent_item',
+    getData: () => itens, filterFn: (lista, q) => filtrarItensCatalogo(lista, q),
+    renderItem: i => `<strong>${i.codigo}</strong> — ${i.descricao}<div class="ac-sub">Estoque atual: ${fmt(i.quantidade)} ${i.unidade || ''} · Custo: R$ ${fmt(i.custo)}</div>`,
+    onSelect: i => {
+      document.getElementById('ent_item').value = i.codigo;
+      document.getElementById('ent_item_busca').value = `${i.codigo} — ${i.descricao}`;
+      document.getElementById('ent_custo').value = i.custo || 0;
+      const info = document.getElementById('ent_item_info');
+      info.style.display = 'block';
+      info.innerHTML = `📦 Estoque atual: <strong>${fmt(i.quantidade)} ${i.unidade || ''}</strong> · Categoria: ${i.categoria || '—'} · Local: ${i.localizacao || '—'}`;
+    }
+  });
+  initAutocomplete({
+    inputId: 'sai_item_busca', listId: 'sai_item_list', hiddenId: 'sai_item',
+    getData: () => itens, filterFn: (lista, q) => filtrarItensCatalogo(lista, q),
+    renderItem: i => `<strong>${i.codigo}</strong> — ${i.descricao}<div class="ac-sub">Estoque atual: ${fmt(i.quantidade)} ${i.unidade || ''}</div>`,
+    onSelect: i => {
+      document.getElementById('sai_item').value = i.codigo;
+      document.getElementById('sai_item_busca').value = `${i.codigo} — ${i.descricao}`;
+      const info = document.getElementById('sai_item_info');
+      info.style.display = 'block';
+      info.innerHTML = `📦 Estoque atual: <strong>${fmt(i.quantidade)} ${i.unidade || ''}</strong> · Categoria: ${i.categoria || '—'} · Local: ${i.localizacao || '—'}`;
+    }
+  });
+  initAutocomplete({
+    inputId: 'sai_resp', listId: 'sai_resp_list',
+    getData: () => funcionarios, filterFn: filtrarFuncionariosLista,
+    renderItem: f => `<strong>${f.nome}</strong>${f.matricula ? ' — ' + f.matricula : ''}<div class="ac-sub">${f.funcao || '—'} · ${f.setor || '—'}</div>`,
+    onSelect: f => { document.getElementById('sai_resp').value = f.nome; }
+  });
 }
 
-function autoFillEntrada() {
-  const cod = document.getElementById('ent_item').value;
-  const i = itens.find(x => x.codigo === cod);
-  if (i) document.getElementById('ent_custo').value = i.custo;
+function abrirEntrada() {
+  ['ent_item_busca', 'ent_item', 'ent_qtd', 'ent_custo', 'ent_nf', 'ent_forn', 'ent_obra'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ent_qtd').value = 1;
+  document.getElementById('ent_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ent_item_info').style.display = 'none';
+  openModal('entradaModal');
+}
+
+function abrirSaida() {
+  ['sai_item_busca', 'sai_item', 'sai_qtd', 'sai_obra', 'sai_os', 'sai_resp'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('sai_qtd').value = 1;
+  document.getElementById('sai_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sai_item_info').style.display = 'none';
+  openModal('saidaModal');
 }
 
 async function carregarEntradas() {
@@ -1343,6 +1523,37 @@ async function carregarEpis() {
   if (error) return;
   epis = data || [];
   renderEpis();
+  inicializarBuscaEpi();
+}
+
+let _autocompleteEpiIniciado = false;
+function inicializarBuscaEpi() {
+  if (_autocompleteEpiIniciado) return;
+  _autocompleteEpiIniciado = true;
+  initAutocomplete({
+    inputId: 'epi_func', listId: 'epi_func_list',
+    getData: () => funcionarios, filterFn: filtrarFuncionariosLista,
+    renderItem: f => `<strong>${f.nome}</strong>${f.matricula ? ' — ' + f.matricula : ''}<div class="ac-sub">${f.funcao || '—'} · ${f.setor || '—'}</div>`,
+    onSelect: f => {
+      document.getElementById('epi_func').value = f.nome;
+      document.getElementById('epi_mat').value = f.matricula || '';
+      document.getElementById('epi_funcao').value = f.funcao || '';
+    }
+  });
+  initAutocomplete({
+    inputId: 'epi_item_nome', listId: 'epi_item_list', hiddenId: 'epi_item_cod',
+    getData: () => itens, filterFn: (lista, q) => filtrarItensCatalogo(lista, q, 'EPI'),
+    renderItem: i => `<strong>${i.descricao}</strong>${i.ca ? ' — CA ' + i.ca : ''}<div class="ac-sub">Estoque: ${fmt(i.quantidade)} ${i.unidade || ''}${i.tamanho ? ' · Tam.: ' + i.tamanho : ''}</div>`,
+    onSelect: i => {
+      document.getElementById('epi_item_cod').value = i.codigo;
+      document.getElementById('epi_item_nome').value = i.descricao;
+      document.getElementById('epi_item_ca').value = i.ca || '';
+      document.getElementById('epi_item_val').value = i.validade_uso_dias || 365;
+      const info = document.getElementById('epi_item_info');
+      info.style.display = 'block';
+      info.innerHTML = `📦 Estoque disponível: <strong>${fmt(i.quantidade)} ${i.unidade || ''}</strong>${i.tamanho ? ' · Tamanho: ' + i.tamanho : ''}`;
+    }
+  });
 }
 
 function epiVenc(e) {
@@ -1379,23 +1590,40 @@ function renderEpis() {
 
 function abrirEntregaEpi() {
   epiItensTemp = [];
-  ['epi_func', 'epi_mat', 'epi_funcao'].forEach(id => document.getElementById(id).value = '');
+  ['epi_func', 'epi_mat', 'epi_funcao', 'epi_item_nome', 'epi_item_cod', 'epi_item_ca'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('epi_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('epi_item_qtd').value = 1;
+  document.getElementById('epi_item_val').value = 365;
+  document.getElementById('epi_item_info').style.display = 'none';
   renderEpiItensPreview();
   openModal('entregaEpiModal');
 }
 
 function addItemEpi() {
   const nome = document.getElementById('epi_item_nome').value.trim();
+  const cod = document.getElementById('epi_item_cod').value;
   const ca = document.getElementById('epi_item_ca').value.trim();
   const qtd = +document.getElementById('epi_item_qtd').value || 0;
   const val = +document.getElementById('epi_item_val').value || 365;
   if (!nome || qtd <= 0) { toast('Informe o EPI e a quantidade!', 'var(--rust)'); return; }
-  epiItensTemp.push({ epi: nome, ca, qtd, val });
+
+  // Se o item veio do catálogo de estoque, valida a disponibilidade (considerando o que já está na lista)
+  if (cod) {
+    const item = itens.find(i => i.codigo === cod);
+    const jaAdicionado = epiItensTemp.filter(it => it.cod === cod).reduce((s, it) => s + it.qtd, 0);
+    if (item && (jaAdicionado + qtd) > item.quantidade) {
+      toast(`Estoque insuficiente! Disponível: ${item.quantidade} ${item.unidade || ''}`, 'var(--rust)');
+      return;
+    }
+  }
+
+  epiItensTemp.push({ epi: nome, cod, ca, qtd, val });
   document.getElementById('epi_item_nome').value = '';
+  document.getElementById('epi_item_cod').value = '';
   document.getElementById('epi_item_ca').value = '';
   document.getElementById('epi_item_qtd').value = 1;
   document.getElementById('epi_item_val').value = 365;
+  document.getElementById('epi_item_info').style.display = 'none';
   renderEpiItensPreview();
 }
 
@@ -1403,7 +1631,7 @@ function removerItemEpi(idx) { epiItensTemp.splice(idx, 1); renderEpiItensPrevie
 
 function renderEpiItensPreview() {
   document.getElementById('epiItensPreview').innerHTML = epiItensTemp.length
-    ? epiItensTemp.map((it, idx) => `<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:4px;margin-bottom:4px;font-size:13px"><span>${it.epi}${it.ca ? ' — CA ' + it.ca : ''} — ${it.qtd}x (validade ${it.val}d)</span><button class="btn small danger" onclick="removerItemEpi(${idx})">Remover</button></div>`).join('')
+    ? epiItensTemp.map((it, idx) => `<div style="display:flex;justify-content:space-between;padding:6px 10px;background:var(--card2);border-radius:4px;margin-bottom:4px;font-size:13px"><span>${it.epi}${it.ca ? ' — CA ' + it.ca : ''} — ${it.qtd}x (validade ${it.val}d)${it.cod ? ' <span style="color:var(--green)">✔ baixa no estoque</span>' : ''}</span><button class="btn small danger" onclick="removerItemEpi(${idx})">Remover</button></div>`).join('')
     : `<div class="empty" style="padding:6px 0">Nenhum item adicionado ainda</div>`;
 }
 
@@ -1417,24 +1645,45 @@ async function salvarEntregaEpi() {
   const funcao = document.getElementById('epi_funcao').value;
   const entregaId = `ENT-EPI-${Date.now().toString().slice(-6)}`;
 
+  // Revalidação final de estoque antes de gravar (evita corrida entre a montagem da lista e o salvamento)
+  for (const it of epiItensTemp) {
+    if (!it.cod) continue;
+    const item = itens.find(i => i.codigo === it.cod);
+    if (item && item.quantidade < it.qtd) {
+      toast(`Estoque insuficiente para "${it.epi}"! Disponível: ${item.quantidade}`, 'var(--rust)');
+      return;
+    }
+  }
+
   const registros = epiItensTemp.map(it => ({
     matricula: mat, funcionario: func, funcao,
-    epi: it.epi, ca: it.ca, quantidade: it.qtd,
+    epi: it.epi, ca: it.ca, quantidade: it.qtd, item_codigo: it.cod || null,
     data_entrega: data, validade_dias: it.val, recibo: 'Sim', entrega_id: entregaId,
   }));
 
   const { error } = await supabase.from('epis').insert(registros);
   if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
 
+  // Baixa automática no estoque para os itens vinculados ao catálogo
+  for (const it of epiItensTemp) {
+    if (!it.cod) continue;
+    const item = itens.find(i => i.codigo === it.cod);
+    if (!item) continue;
+    const { error: e2 } = await supabase.from('itens').update({ quantidade: (item.quantidade || 0) - it.qtd }).eq('codigo', it.cod);
+    if (e2) toast(`Entrega salva, mas houve erro ao dar baixa em "${it.epi}": ` + e2.message, 'var(--rust)');
+  }
+
   await registrarLog(`Entrega de EPI registrada: ${func} (${epiItensTemp.length} item(ns))`);
   closeModal('entregaEpiModal');
+  await carregarItens();
   await carregarEpis();
-  toast('✔ Entrega de EPI registrada!');
+  renderDashboard();
+  toast('✔ Entrega de EPI registrada e baixa no estoque efetuada!');
   statusSalvando('💾 Salvo no Supabase');
 }
 
 function excluirEpi(id) {
-  askConfirm('Excluir este registro de EPI?', async () => {
+  askConfirm('Excluir este registro de EPI? Esta ação não devolve o item ao estoque automaticamente.', async () => {
     const { error } = await supabase.from('epis').delete().eq('id', id);
     if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
     await carregarEpis();
@@ -1765,6 +2014,34 @@ async function carregarTransferencias() {
   if (error) return;
   transferencias = data || [];
   renderTransferencias();
+  inicializarBuscaTransferencia();
+}
+
+let _autocompleteTrfIniciado = false;
+function inicializarBuscaTransferencia() {
+  if (_autocompleteTrfIniciado) return;
+  _autocompleteTrfIniciado = true;
+  initAutocomplete({
+    inputId: 'trf_item_desc', listId: 'trf_item_list',
+    getData: () => itens, filterFn: (lista, q) => filtrarItensCatalogo(lista, q),
+    renderItem: i => `<strong>${i.codigo}</strong> — ${i.descricao}<div class="ac-sub">Estoque: ${fmt(i.quantidade)} ${i.unidade || ''}</div>`,
+    onSelect: i => {
+      document.getElementById('trf_item_desc').value = i.descricao;
+      document.getElementById('trf_item_un').value = i.unidade || '';
+    }
+  });
+  initAutocomplete({
+    inputId: 'trf_respSaida', listId: 'trf_respSaida_list',
+    getData: () => funcionarios, filterFn: filtrarFuncionariosLista,
+    renderItem: f => `<strong>${f.nome}</strong>${f.matricula ? ' — ' + f.matricula : ''}<div class="ac-sub">${f.funcao || '—'}</div>`,
+    onSelect: f => { document.getElementById('trf_respSaida').value = f.nome; }
+  });
+  initAutocomplete({
+    inputId: 'trf_respReceb', listId: 'trf_respReceb_list',
+    getData: () => funcionarios, filterFn: filtrarFuncionariosLista,
+    renderItem: f => `<strong>${f.nome}</strong>${f.matricula ? ' — ' + f.matricula : ''}<div class="ac-sub">${f.funcao || '—'}</div>`,
+    onSelect: f => { document.getElementById('trf_respReceb').value = f.nome; }
+  });
 }
 
 function renderTransferencias() {
@@ -1772,14 +2049,43 @@ function renderTransferencias() {
       <td>${t.data}</td><td>${t.origem || '—'}</td><td>${t.destino || '—'}</td>
       <td>${(t.itens || []).map(i => i.desc).join(', ') || '—'}</td>
       <td>${t.anexo_url ? `<a href="${t.anexo_url}" target="_blank">📎 Ver</a>` : '—'}</td>
-      <td><button class="btn small danger" onclick="excluirTransferencia('${t.id}')">Excluir</button></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn small" onclick="editarTransferencia('${t.id}')">Editar</button>
+        <button class="btn small" style="background:var(--steel-light)" onclick="imprimirTransferencia('${t.id}')">🖨️ Imprimir</button>
+        <button class="btn small danger" onclick="excluirTransferencia('${t.id}')">Excluir</button>
+      </td>
     </tr>`).join('') || `<tr><td colspan="6" class="empty">Nenhuma transferência registrada.</td></tr>`;
 }
 
+let editandoTransferenciaId = null;
+
 function novaTransferencia() {
+  editandoTransferenciaId = null;
   trfItensTemp = [];
+  document.getElementById('trfModalTitle').textContent = 'Nova Transferência de Material';
+  document.getElementById('trfSaveBtn').textContent = 'Registrar';
   ['trf_serie', 'trf_origem', 'trf_destino', 'trf_transp', 'trf_placa', 'trf_respSaida', 'trf_respReceb'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('trf_data').value = new Date().toISOString().split('T')[0];
+  document.getElementById('trf_anexo').value = '';
+  renderTrfItensPreview();
+  openModal('transferenciaModal');
+}
+
+function editarTransferencia(id) {
+  const t = transferencias.find(x => String(x.id) === String(id));
+  if (!t) return;
+  editandoTransferenciaId = id;
+  trfItensTemp = JSON.parse(JSON.stringify(t.itens || []));
+  document.getElementById('trfModalTitle').textContent = 'Editar Transferência de Material';
+  document.getElementById('trfSaveBtn').textContent = 'Salvar Alterações';
+  document.getElementById('trf_serie').value = t.numero_serie || '';
+  document.getElementById('trf_data').value = t.data || '';
+  document.getElementById('trf_origem').value = t.origem || '';
+  document.getElementById('trf_destino').value = t.destino || '';
+  document.getElementById('trf_transp').value = t.transportadora || '';
+  document.getElementById('trf_placa').value = t.placa || '';
+  document.getElementById('trf_respSaida').value = t.responsavel_saida || '';
+  document.getElementById('trf_respReceb').value = t.responsavel_recebimento || '';
   document.getElementById('trf_anexo').value = '';
   renderTrfItensPreview();
   openModal('transferenciaModal');
@@ -1811,7 +2117,7 @@ async function salvarTransferencia() {
   if (!origem || !destino) { toast('Preencha origem e destino!', 'var(--rust)'); return; }
   if (!trfItensTemp.length) { toast('Adicione ao menos um item!', 'var(--rust)'); return; }
 
-  let anexoUrl = null;
+  let anexoUrl = editandoTransferenciaId ? (transferencias.find(x => String(x.id) === String(editandoTransferenciaId))?.anexo_url || null) : null;
   const arquivo = document.getElementById('trf_anexo').files[0];
   if (arquivo) {
     const nomeArquivo = `${Date.now()}_${arquivo.name}`;
@@ -1821,19 +2127,74 @@ async function salvarTransferencia() {
     anexoUrl = urlData?.publicUrl || null;
   }
 
-  const { error } = await supabase.from('transferencias').insert({
+  const dados = {
     numero_serie: document.getElementById('trf_serie').value, data: document.getElementById('trf_data').value,
     origem, destino, transportadora: document.getElementById('trf_transp').value, placa: document.getElementById('trf_placa').value,
     itens: trfItensTemp, responsavel_saida: document.getElementById('trf_respSaida').value,
     responsavel_recebimento: document.getElementById('trf_respReceb').value, anexo_url: anexoUrl,
-  });
-  if (error) { toast('Erro: ' + error.message, 'var(--rust)'); return; }
+  };
 
-  await registrarLog(`Transferência registrada: ${origem} → ${destino}`);
+  let resultado;
+  if (editandoTransferenciaId) {
+    resultado = await supabase.from('transferencias').update(dados).eq('id', editandoTransferenciaId);
+  } else {
+    resultado = await supabase.from('transferencias').insert(dados);
+  }
+  if (resultado.error) { toast('Erro: ' + resultado.error.message, 'var(--rust)'); return; }
+
+  await registrarLog(editandoTransferenciaId ? `Transferência atualizada: ${origem} → ${destino}` : `Transferência registrada: ${origem} → ${destino}`);
   closeModal('transferenciaModal');
   await carregarTransferencias();
-  toast('✔ Transferência registrada!');
+  toast(editandoTransferenciaId ? '✔ Transferência atualizada!' : '✔ Transferência registrada!');
   statusSalvando('💾 Salvo no Supabase');
+}
+
+function imprimirTransferencia(id) {
+  const t = transferencias.find(x => String(x.id) === String(id));
+  if (!t) return;
+  const itensHtml = (t.itens || []).map(i => `<tr><td>${i.desc}</td><td style="text-align:center">${i.qtd}</td><td>${i.un || '—'}</td></tr>`).join('') || '<tr><td colspan="3">Nenhum item</td></tr>';
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+    <title>Guia de Transferência ${t.numero_serie || ''}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1c1c1e; padding: 36px; }
+      .cabecalho { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #BD0C1D; padding-bottom: 14px; margin-bottom: 20px; }
+      .cabecalho h1 { font-family: Georgia, serif; font-size: 20px; color: #BD0C1D; margin: 0 0 2px; }
+      .cabecalho .sub { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+      .numero { font-size: 13px; text-align: right; color: #444; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; margin-bottom: 20px; font-size: 13px; }
+      .campo b { display: block; font-size: 10px; text-transform: uppercase; color: #888; margin-bottom: 2px; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 13px; }
+      th { background: #f4f4f5; text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; color: #666; border: 1px solid #dcdce0; }
+      td { padding: 8px 10px; border: 1px solid #dcdce0; }
+      .assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; }
+      .assinatura { text-align: center; }
+      .linha { border-top: 1px solid #333; margin-bottom: 6px; padding-top: 6px; }
+      .assinatura .nome { font-size: 13px; }
+      .assinatura .cargo { font-size: 11px; color: #888; }
+      @media print { body { padding: 14px; } }
+    </style></head><body>
+    <div class="cabecalho">
+      <div><h1>Construtora Calper</h1><div class="sub">Divisão de Alumínio — Guia de Transferência de Material</div></div>
+      <div class="numero">${t.numero_serie ? `Nº Série: <b>${t.numero_serie}</b><br>` : ''}Data: <b>${t.data ? new Date(t.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</b></div>
+    </div>
+    <div class="grid">
+      <div class="campo"><b>Origem</b>${t.origem || '—'}</div>
+      <div class="campo"><b>Destino</b>${t.destino || '—'}</div>
+      <div class="campo"><b>Transportadora</b>${t.transportadora || '—'}</div>
+      <div class="campo"><b>Placa</b>${t.placa || '—'}</div>
+    </div>
+    <table><thead><tr><th>Descrição do Item</th><th style="text-align:center">Qtd</th><th>Unidade</th></tr></thead><tbody>${itensHtml}</tbody></table>
+    <div class="assinaturas">
+      <div class="assinatura"><div class="linha">${t.responsavel_saida || ''}</div><div class="nome">Responsável pela Saída</div></div>
+      <div class="assinatura"><div class="linha">${t.responsavel_recebimento || ''}</div><div class="nome">Responsável pelo Recebimento</div></div>
+    </div>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { toast('Permita pop-ups para imprimir.', 'var(--rust)'); return; }
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => w.print();
 }
 
 function excluirTransferencia(id) {
